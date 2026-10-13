@@ -1,0 +1,206 @@
+ได้ครับ และเป็นแนวทางที่ดีมาก: ตอนนี้ล็อกเวอร์ชัน Audit เป็น **B: Strict One Basket** ให้ระบบนิ่งและทดสอบง่ายก่อน แล้วอนาคตค่อยเพิ่มโหมด **A: Manual Override** เพื่อทดลองกลยุทธ์แบบ Discretionary ได้
+
+แต่ผมแนะนำว่าในโค้ดอนาคตควรใช้ `enum` มากกว่า `true/false` เพื่อให้ความหมายชัด อ่าน Log ง่าย และขยายโหมดเพิ่มได้โดยไม่ทำให้ Input สับสน
+
+## โครงสร้างที่แนะนำในอนาคต
+
+แทนที่จะใช้:
+
+```cpp
+input bool InpManualOverride = false;
+```
+
+ให้ใช้ลักษณะนี้:
+
+```cpp
+enum ENUM_MANUAL_MODE
+{
+   STRICT_BASKET = 0,     // B: ห้ามเปิดไม้เดี่ยว
+   MANUAL_OVERRIDE = 1   // A: อนุญาต Manual BUY / SELL
+};
+
+input ENUM_MANUAL_MODE InpManualMode = STRICT_BASKET;
+```
+
+บนหน้า Input จะเห็นชัดเจนประมาณนี้:
+
+```text
+Manual Trading Mode:
+[ Strict Basket ]
+[ Manual Override ]
+```
+
+และ Log ก็อ่านง่าย:
+
+```text
+Manual Mode = STRICT_BASKET
+```
+
+หรือ:
+
+```text
+Manual Mode = MANUAL_OVERRIDE
+```
+
+## โหมด B ที่จะทำตอนนี้
+
+ค่าเริ่มต้นและเวอร์ชัน Audit จะเป็น:
+
+```text
+Manual Mode = STRICT_BASKET
+```
+
+กติกา:
+
+```text
+HEDGE OPEN
+→ เปิด Buy 1 + Sell 1
+→ เปิดได้เมื่อไม่มี Position เท่านั้น
+
+AUTO HEDGE
+→ เปิด Buy 1 + Sell 1
+→ เปิดได้เมื่อไม่มี Position เท่านั้น
+
+BUY / SELL
+→ ไม่เปิดไม้เดี่ยว
+→ แสดงข้อความถูก Block
+→ แนะนำให้ใช้ HEDGE OPEN
+
+พบ Position ไม่สมดุลจากภายนอก
+→ Auto ไม่เปิดเพิ่ม
+→ Protection ที่มีอยู่ยังทำงาน
+→ รอให้ทุก Position ปิดก่อน
+```
+
+ผลคือทุก Basket ที่ EA จัดการจะตีความได้แน่นอน:
+
+```text
+Basket ว่าง       = 0 Buy / 0 Sell
+Basket ปกติ       = 1 Buy / 1 Sell
+Basket ผิดปกติ    = อื่น ๆ
+```
+
+จึงเหมาะกับ Trailing Restart, Recovery, Timeout และ Long-run test ที่คุณกำลังจะทำ
+
+## โหมด A ที่เพิ่มภายหลัง
+
+เมื่ออนาคตเปิด:
+
+```text
+Manual Mode = MANUAL_OVERRIDE
+```
+
+ปุ่ม BUY/SELL จะเปิดไม้เดี่ยวได้ เช่น:
+
+```text
+เริ่มจาก Auto Basket:
+Buy 1 + Sell 1
+
+ผู้ใช้กด BUY:
+Buy 2 + Sell 1
+```
+
+จากนั้น EA ต้องถือว่านี่เป็นสถานะ Manual โดยตั้งใจ ไม่ใช่ Error
+
+แต่เพื่อให้ A ปลอดภัย จะไม่ควรแค่เปลี่ยน `false → true` แล้วอนุญาตให้เปิด Order ทันที ต้องเพิ่มโครงสร้างแยกชัดเจนดังนี้:
+
+```text
+Auto Basket
+- Magic Number หลัก
+- Comment: HEDGE_AUTO
+- One Basket Rules
+- Auto Trailing / Recovery / Timeout
+
+Manual Position
+- Magic Number แยก
+- Comment: HEDGE_MANUAL
+- ไม่ถูกนับเป็น Auto Basket
+- แยกสถานะและรายงานบน Panel
+```
+
+## ทำไมต้องแยก Magic Number
+
+สมมติในอนาคตคุณเปิด Manual Buy เพิ่ม:
+
+```text
+Auto:
+Buy 1 + Sell 1
+
+Manual:
+Buy 1
+```
+
+ถ้าทุก Order ใช้ Magic Number เดียวกัน EA อาจเห็นแค่:
+
+```text
+Buy 2 / Sell 1
+```
+
+และไม่รู้ว่าอะไรคือ:
+
+```text
+- Hedge Auto ที่ต้อง Restore Trailing
+- Manual Trade ที่ผู้ใช้ตั้งใจถือ
+- Position ที่ต้องใช้ใน Recovery
+- Position ที่ต้องเอาไปรวม Equity Report
+```
+
+แต่ถ้าแยก Magic Number ระบบจะมองได้ชัด:
+
+```text
+Auto Basket:
+Buy 1 / Sell 1
+
+Manual:
+Buy 1
+```
+
+จึงสามารถกำหนดกลยุทธ์หลายแบบได้โดยไม่ทำลาย State Machine หลัก
+
+## สิ่งที่ควรกำหนดใน A ล่วงหน้า
+
+ตอนพัฒนาโหมด A เราจะต้องเลือกกติกาเพิ่มอีกเล็กน้อย:
+
+| หัวข้อ | ตัวเลือกที่ควรเลือก |
+|---|---|
+| Manual มี SL/TP ไหม | ใช้ SL/BE/Trailing แยกสำหรับ Manual หรือให้ผู้ใช้จัดการเอง |
+| Manual นับใน Equity Refill ไหม | แนะนำให้แยกรายงาน Auto และ Manual |
+| Auto เปิด Basket ใหม่ได้ไหมเมื่อมี Manual ค้าง | แนะนำให้ไม่เปิด จนกว่า Manual จะปิด |
+| Manual ปิดแล้ว Auto ทำอะไร | กลับสู่ Strict Auto Logic เมื่อทุก Position ว่าง |
+| เปลี่ยนโหมดระหว่างมี Position ได้ไหม | ไม่อนุญาต ให้เปลี่ยนเมื่อ Flat เท่านั้น |
+| Panel แสดงอะไร | แยก Auto Basket, Manual Position และ Net Exposure |
+
+จุดสำคัญที่สุดคือ:
+
+```text
+ห้ามสลับ STRICT_BASKET ↔ MANUAL_OVERRIDE
+ขณะที่ยังมี Position ค้างอยู่
+```
+
+ให้ EA Block และแจ้ง เช่น:
+
+```text
+Mode change rejected:
+Close all positions before changing Manual Mode.
+```
+
+เพราะการเปลี่ยนกติกากลาง Basket อาจทำให้ State ของ Trailing และ Recovery ตีความผิดได้
+
+## ลำดับการทำงานที่เหมาะสม
+
+```text
+ตอนนี้:
+→ สร้าง/แก้ระบบด้วย Strict Basket (B)
+→ Patch Phase 2 และ 3 ให้ครบ
+→ Short Test
+→ Long-run Test
+→ Audit Version Stable
+
+อนาคต:
+→ Fork หรือสำเนา Version Stable
+→ เพิ่ม Manual Override Mode (A)
+→ แยก Magic / Comment / Panel State
+→ Test กลยุทธ์ Manual + Auto แบบเฉพาะทาง
+```
+
+การเก็บเวอร์ชัน Strict ที่ผ่าน Audit ไว้เป็น Baseline ก่อน จะทำให้คุณเปรียบเทียบผลของกลยุทธ์ใหม่ได้อย่างน่าเชื่อถือ และย้อนกลับไปใช้ระบบเสถียรได้เสมอหาก Manual Override มีปัญหา 

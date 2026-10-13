@@ -1,0 +1,394 @@
+งั้นอัพเดทระบบ Trailing TP ก็ทำให้เลือกแบบนี้ได้ใช่มั๊ยครับ 2 ระบบ A เริ่มทำงานเมือถึง Poins ที่กำหนด แบบปัจจุบัน  B เริ่มได้ทันทีเมือเปิด order  ในกรณี จุดปิดขาดทุนใว้สูงเช่น 20000 poins Trailing TP 3000 poins ถ้าขึ้นไปแล้วย่อกลับลงมา 3000 ก็ปิด order ฝั่งนั้นได้เลย
+
+
+
+ได้ครับ และแนวคิดนี้มีประโยชน์มาก โดยทำให้ Trailing TP เลือกได้ 2 แบบเหมือน Manual Mode เลย
+
+แต่ต้องกำหนดความหมายของโหมด B ให้ชัด เพราะมันไม่ใช่แค่ “Trailing เริ่มเร็วขึ้น” — มันจะกลายเป็น **Operational Stop Loss ระยะสั้น** ที่ทำงานทับ Hard SL 20,000 Points ครับ
+
+## สองโหมด Trailing TP
+
+ผมแนะนำให้ทำเป็น Input แบบนี้ในอนาคต:
+
+```cpp
+enum ENUM_TRAILING_MODE
+{
+   TRAIL_ARMED = 0,       // A: เริ่มเมื่อถึง Trigger
+   TRAIL_FROM_ENTRY = 1   // B: เริ่มติดตามตั้งแต่เปิด Order
+};
+
+input ENUM_TRAILING_MODE InpTrailingMode = TRAIL_ARMED;
+input int InpTrailingStartPoints = 1200;
+input int InpTrailingPullbackPoints = 500;
+```
+
+หน้า Input จะอ่านง่าย:
+
+```text
+Trailing TP Mode:
+[ Armed after trigger ]
+[ Trail from entry ]
+
+Trailing Start Points:     1200
+Trailing Pullback Points:   500
+```
+
+## A: Armed Trailing — แบบปัจจุบัน
+
+นี่คือระบบที่ใช้อยู่ตอนนี้
+
+ตัวอย่าง Production Profile เดิม:
+
+```text
+Hard SL                 = 700 Points
+Trailing Pullback       = 500 Points
+Trailing Arm            = 1200 Points
+```
+
+หรือในเชิงสูตรเดิม:
+
+\[
+\text{Trailing Arm} =
+\text{Cut Loss} +
+\text{Trailing Pullback}
+\]
+
+\[
+700 + 500 = 1200
+\]
+
+พฤติกรรม:
+
+```text
+กำไรยังไม่ถึง +1200
+→ Trailing ยังไม่ทำงาน
+
+กำไรขึ้นถึง +1200
+→ Trailing ถูก Arm
+
+หลังจากกำไรขึ้นต่อ
+→ Trailing ขยับตาม Best Profit
+
+ถ้าย่อจากจุดสูงสุด 500 Points
+→ ปิด Order ฝั่งนั้น
+```
+
+ตัวอย่าง:
+
+```text
+Order Buy ขึ้นสูงสุด +1800
+Trailing Pullback = 500
+
+Trailing Exit = +1300
+```
+
+ดังนั้น A คือ “รอให้กำไรถึงจุดปลอดภัยก่อน” แล้วจึงยอมให้ Trailing ปิดกำไร
+
+### A เหมาะกับอะไร
+
+```text
+- ต้องการให้ Hedge ได้เวลาวิ่ง
+- ไม่อยากให้ตลาดแกว่งสั้น ๆ ปิด Order เร็วเกินไป
+- ต้องการ Lock Profit หลังราคาเดินไปไกลแล้ว
+- เหมาะกับเวอร์ชัน Audit ปัจจุบัน
+```
+
+## B: Trail From Entry — เริ่มนับตั้งแต่เปิด Order
+
+โหมด B ที่คุณเสนอคือ:
+
+```text
+เปิด Order เสร็จ
+→ Trailing เริ่มจับ Best Price/Best Profit ทันที
+→ ไม่ต้องรอให้กำไรถึง Trigger
+```
+
+ให้คิดว่า `Trailing Pullback` เป็น “ระยะถอยสูงสุดจากจุดดีที่สุดนับตั้งแต่เปิด Order”
+
+ตัวอย่างที่คุณยกมา:
+
+```text
+Hard SL                 = 20,000 Points
+Trailing Pullback       = 3,000 Points
+Trailing Mode           = Trail From Entry
+```
+
+ระบบจะติดตาม Order ตั้งแต่เปิดทันที
+
+```text
+ราคาไปทางที่ดี
+→ เก็บ Best Profit ล่าสุดไว้
+
+ถ้าราคาย่อจาก Best Profit 3,000 Points
+→ ปิด Order ฝั่งนั้น
+```
+
+ตัวอย่าง Buy:
+
+```text
+เปิด Buy ที่ 4,000.00
+
+ราคาขึ้นไปสูงสุดที่ 4,030.00
+= กำไรสูงสุด +3,000 Points
+
+จากนั้นราคาย่อลงมาที่ 4,000.00
+= ย่อจากจุดสูงสุด 3,000 Points
+
+→ ปิด Buy
+```
+
+ในกรณีนี้ Order ปิดใกล้ราคาเข้า ไม่ได้รอให้ไปถึง Hard SL -20,000 Points
+
+อีกตัวอย่าง:
+
+```text
+เปิด Buy ที่ 4,000.00
+
+ราคาขึ้นไปถึง 4,050.00
+= Best Profit +5,000 Points
+
+จากนั้นย่อลงมา 4,020.00
+= Pullback 3,000 Points
+
+→ ปิด Buy ที่กำไรประมาณ +2,000 Points
+```
+
+นี่คือจุดแข็งของ B: แม้ Hard SL จะกว้างเพื่อรองรับความผันผวนใหญ่ แต่ระบบสามารถตัดไม้ที่เสีย Momentum ได้เร็วกว่า
+
+## ประเด็นสำคัญ: ถ้าราคาไม่เคยขึ้นเลย
+
+ต้องเลือกว่า B จะทำงานแบบไหน เพราะมีได้ 2 ความหมาย
+
+### B1: Immediate Hard Trail — ผมเข้าใจว่าคุณต้องการแบบนี้
+
+ระบบเริ่ม Trail จากราคาเข้าเลย
+
+```text
+เปิด Buy
+→ ตั้ง Best Profit เริ่มต้น = 0
+
+ถ้าราคาไม่เคยขึ้น
+และลงจากราคาเข้า 3,000 Points
+→ ปิด Buy ที่ประมาณ -3,000 Points
+```
+
+แม้ Hard SL ตั้งไว้:
+
+```text
+-20,000 Points
+```
+
+ก็จะไม่รอถึงจุดนั้น เพราะ Immediate Trail ตัดก่อนที่:
+
+```text
+ประมาณ -3,000 Points
+```
+
+โครงสร้างความเสี่ยงจะเป็น:
+
+```text
+Hard SL 20,000
+= Safety / Catastrophe Backup
+
+Immediate Trailing 3,000
+= Operational Loss Control
+```
+
+นี่ตรงกับแนวคิดที่คุณพูดว่า ถ้าราคาขึ้นแล้วถอยกลับ 3,000 Points ก็ให้ปิดไม้ฝั่งนั้นได้ทันที และในกรณีราคาไปผิดทางตั้งแต่ต้นก็ไม่ต้องรอขาดทุนถึง 20,000 Points
+
+### B2: Profit-Only Trail — ไม่ปิดต่ำกว่าราคาเข้า
+
+อีกแบบหนึ่งคือเริ่มเก็บ Best Profit ตั้งแต่เปิด แต่ไม่ยอม Close หากราคาต่ำกว่าราคาเข้า
+
+```text
+ราคาไม่เคยกำไรถึง +3,000
+→ ไม่ปิดด้วย Trailing
+→ รอ Hard SL -20,000 ต่อไป
+```
+
+กรณีราคาขึ้น +5,000 แล้วลงมา +2,000:
+
+```text
+Pullback = 3,000
+→ ปิดกำไร +2,000
+```
+
+แต่กรณีราคาขึ้นแค่ +1,000 แล้วลงต่ำกว่าราคาเข้า:
+
+```text
+→ ยังไม่ปิดด้วย Trailing
+```
+
+แบบนี้ลดโอกาสโดนตัด Loss สั้น ๆ แต่ยังมีความเสี่ยงต้องถือไม้ไปหา Hard SL ที่กว้างมาก
+
+## สำหรับตัวอย่างของคุณ ผมแนะนำ B1
+
+จากโจทย์นี้:
+
+```text
+Hard SL = 20,000 Points
+Trailing TP = 3,000 Points
+```
+
+ผมเข้าใจว่าเป้าหมายคือ:
+
+```text
+ยอมให้ราคาเหวี่ยงได้
+แต่เมื่อ Momentum หาย หรือราคาถอยแรง
+ไม่ต้องแบก Loss ไปถึง -20,000
+```
+
+ดังนั้นควรใช้:
+
+```text
+Mode B = Trail From Entry
+Type   = Immediate Hard Trail
+```
+
+กฎจะเป็น:
+
+\[
+\text{Close เมื่อ Current Profit}
+\le
+\text{Best Profit} - \text{Trailing Pullback}
+\]
+
+โดยเริ่มต้น:
+
+\[
+\text{Best Profit} = 0
+\]
+
+ผลคือ:
+
+| สถานการณ์ | Best Profit | Current Profit ที่ทำให้ปิด | ผลโดยประมาณ |
+|---|---:|---:|---|
+| ราคาไม่เคยขึ้น | 0 | -3000 | ตัดขาดทุนราว -3000 |
+| ขึ้น +1000 แล้วกลับลง | +1000 | -2000 | ตัดขาดทุนราว -2000 |
+| ขึ้น +3000 แล้วกลับลง | +3000 | 0 | ปิดใกล้ทุน |
+| ขึ้น +5000 แล้วกลับลง | +5000 | +2000 | ปิดกำไรราว +2000 |
+| ขึ้น +10000 แล้วกลับลง | +10000 | +7000 | ล็อกกำไรราว +7000 |
+
+ตัวเลขจริงจะคลาดเคลื่อนตาม Spread, Commission, Slippage และความเร็ว Tick แต่ตรรกะหลักเป็นแบบนี้
+
+## ผลต่อ Hedge Basket
+
+นี่คือจุดที่ต้องออกแบบเพิ่มอย่างระวัง
+
+สมมติ Auto Hedge เปิด:
+
+```text
+Buy 1
+Sell 1
+```
+
+ตลาดวิ่งขึ้นแรง:
+
+```text
+Buy ได้กำไร
+Sell ขาดทุน
+```
+
+หากเปิด B1 และ `Trailing Pullback = 3000`:
+
+```text
+Sell อาจปิดก่อนที่ -3000
+Buy ยังเปิดอยู่
+```
+
+สถานะจะเหลือ:
+
+```text
+Buy 1
+Sell 0
+```
+
+นั่นหมายถึง EA ไม่ได้ Hedge สมบูรณ์แล้ว แต่กลายเป็นถือ Buy แบบมีทิศทาง
+
+ดังนั้นเมื่อเพิ่ม B ในอนาคต ต้องเพิ่ม Input อีกตัวเพื่อกำหนดนโยบายหลังปิดขาข้างหนึ่ง:
+
+```cpp
+enum ENUM_ONE_LEG_EXIT_POLICY
+{
+   HOLD_REMAINING_LEG = 0,
+   CLOSE_WHOLE_BASKET = 1
+};
+```
+
+ความหมายคือ:
+
+| Policy | เมื่อ Buy หรือ Sell ฝั่งหนึ่งโดน Trailing |
+|---|---|
+| `HOLD_REMAINING_LEG` | ปิดเฉพาะฝั่งที่โดน Trailing และปล่อยอีกฝั่งวิ่งต่อ |
+| `CLOSE_WHOLE_BASKET` | ปิดทั้ง Buy และ Sell ทันที เพื่อกลับไป Flat |
+
+### เลือกแบบไหน
+
+```text
+ต้องการ Hedge ปลอดภัยและผล Audit อ่านง่าย
+→ CLOSE_WHOLE_BASKET
+```
+
+```text
+ต้องการให้กำไรฝั่งชนะวิ่งต่อเป็น Trend-following
+→ HOLD_REMAINING_LEG
+```
+
+แต่ `HOLD_REMAINING_LEG` ไม่ควรใช้ใน Audit Build ปัจจุบัน เพราะมันเปลี่ยนระบบจาก “Hedge Basket” เป็น “Hedge แล้วปล่อยไม้ชนะวิ่ง” ซึ่งต้องมีระบบจัดการ Position ที่เหลือ และกติกา Re-entry เพิ่มอีกชุด
+
+## ลำดับพัฒนาที่เหมาะสม
+
+ตอนนี้ควรล็อก Version แรกให้เรียบง่ายก่อน:
+
+```text
+Manual Mode    = Strict Basket
+Trailing Mode  = A: Armed Trailing
+```
+
+ทำ Phase ที่เหลือให้ครบ แล้ว Short Test และ Long-run test จนผ่านก่อน
+
+จากนั้นค่อยแตกเป็น Version กลยุทธ์ใหม่:
+
+```text
+Trailing Mode  = B: Trail From Entry
+Trailing Type  = Immediate Hard Trail
+One-Leg Policy = เลือก Hold หรือ Close Whole Basket
+```
+
+แยกการทดสอบออกจาก Version Audit จะทำให้รู้ชัดว่า ผลกำไร/ขาดทุนเกิดจากกลยุทธ์ Trailing ใหม่ ไม่ใช่เกิดจากบั๊กใน Trailing Restart หรือ Hedge Recovery เดิมครับ
+
+## สรุป
+
+**ทำได้แน่นอนครับ** และโครงสร้างที่ดีที่สุดคือ:
+
+```text
+A — Armed Trailing
+เริ่มเมื่อกำไรถึง Trigger
+เหมาะกับ Hedge Audit และ Production Base
+
+B — Trail From Entry
+เริ่มทันทีที่เปิด Order
+Trailing 3,000 สามารถทำหน้าที่เป็น Loss Cap
+แม้ Hard SL จะอยู่ไกล เช่น 20,000 Points
+```
+
+สำหรับตัวอย่างของคุณ ผมแนะนำให้โหมด B ทำงานเป็น:
+
+```text
+Best Profit เริ่มที่ 0
+ราคาไม่เคยขึ้นแล้วลง -3,000
+→ ปิด Loss
+
+ราคาเคยขึ้นแล้วถอย 3,000
+→ ปิดตามระยะ Pullback จากยอด
+```
+
+แต่ก่อนทำจริง ต้องเลือกเพิ่มเพียงข้อเดียว:
+
+```text
+เมื่อ Trailing ปิด Buy หรือ Sell ฝั่งหนึ่งแล้ว
+A = ปล่อยอีกฝั่งวิ่งต่อ
+B = ปิดทั้ง Hedge Basket
+```
+
+สำหรับระบบ Strict Hedge ในรอบ Audit ผมแนะนำ **B: ปิดทั้ง Hedge Basket**; ส่วน A เหมาะเป็นกลยุทธ์ Trend-following Version ถัดไปครับ 

@@ -20,6 +20,64 @@ struct STrailTrack
 STrailTrack g_trail[];
 
 //+------------------------------------------------------------------+
+//| ชื่อ Global Variable สำหรับเก็บ Best Profit ของ Trailing TP      |
+//| ผูกด้วย Symbol + Magic + Position Ticket                          |
+//+------------------------------------------------------------------+
+string TrailGVName(ulong ticket)
+  {
+   return("HEDGE1_"
+          + _Symbol
+          + "_"
+          + IntegerToString(InpMagicNumber)
+          + "_TRAIL_"
+          + IntegerToString((long)ticket));
+  }
+
+//+------------------------------------------------------------------+
+//| อ่าน Best Profit เดิมจาก Terminal Global Variable                |
+//| found=true หมายถึงมีข้อมูลจากก่อน Restart                        |
+//+------------------------------------------------------------------+
+double TrailLoadBest(ulong ticket, bool &found)
+  {
+   found = false;
+
+   string gvName = TrailGVName(ticket);
+
+   if(!GlobalVariableCheck(gvName))
+      return(0.0);
+
+   found = true;
+   return(GlobalVariableGet(gvName));
+  }
+
+//+------------------------------------------------------------------+
+//| บันทึก Best Profit ของ Ticket ลง Terminal Global Variable        |
+//+------------------------------------------------------------------+
+void TrailSaveBest(ulong ticket, double bestPts)
+  {
+   string gvName = TrailGVName(ticket);
+
+   if(!GlobalVariableSet(gvName, bestPts))
+      Print("Hedge1: บันทึก Trailing State ล้มเหลว #", ticket,
+            " error=", GetLastError());
+  }
+
+//+------------------------------------------------------------------+
+//| ลบ Persistent State หลัง Position ปิด                             |
+//+------------------------------------------------------------------+
+void TrailDeleteBest(ulong ticket)
+  {
+   string gvName = TrailGVName(ticket);
+
+   if(GlobalVariableCheck(gvName))
+     {
+      if(!GlobalVariableDel(gvName))
+         Print("Hedge1: ลบ Trailing State ล้มเหลว #", ticket,
+               " error=", GetLastError());
+     }
+  }
+
+//+------------------------------------------------------------------+
 //| หา index ของไม้ในตัวติดตาม (-1 = ไม่มี)                          |
 //+------------------------------------------------------------------+
 int TrailFind(ulong ticket)
@@ -36,16 +94,33 @@ int TrailFind(ulong ticket)
 void TrailUpsert(ulong ticket, double profitPts)
   {
    int idx = TrailFind(ticket);
+
    if(idx < 0)
      {
+      //--- หาก EA Restart ให้พยายาม Restore Best Profit เดิมก่อน
+      bool foundSaved = false;
+      double savedBest = TrailLoadBest(ticket, foundSaved);
+
       int n = ArraySize(g_trail);
       ArrayResize(g_trail, n + 1);
-      g_trail[n].ticket  = ticket;
-      g_trail[n].bestPts = profitPts;
+
+      g_trail[n].ticket = ticket;
+      g_trail[n].bestPts = MathMax(profitPts, savedBest);
+
+      TrailSaveBest(ticket, g_trail[n].bestPts);
+
+      if(foundSaved)
+         Print("Hedge1: Restore Trailing State #", ticket,
+               " | Best=", DoubleToString(savedBest, 0), " pts");
+
       return;
      }
+
    if(profitPts > g_trail[idx].bestPts)
+     {
       g_trail[idx].bestPts = profitPts;
+      TrailSaveBest(ticket, g_trail[idx].bestPts);
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -54,12 +129,19 @@ void TrailUpsert(ulong ticket, double profitPts)
 void TrailRemove(ulong ticket)
   {
    int idx = TrailFind(ticket);
-   if(idx < 0)
-      return;
-   int n = ArraySize(g_trail);
-   for(int i = idx; i < n - 1; i++)
-      g_trail[i] = g_trail[i + 1];
-   ArrayResize(g_trail, n - 1);
+
+   if(idx >= 0)
+     {
+      int n = ArraySize(g_trail);
+
+      for(int i = idx; i < n - 1; i++)
+         g_trail[i] = g_trail[i + 1];
+
+      ArrayResize(g_trail, n - 1);
+     }
+
+   //--- ลบข้อมูลถาวรด้วย แม้ g_trail ใน Memory จะไม่มีแล้ว
+   TrailDeleteBest(ticket);
   }
 
 //+------------------------------------------------------------------+
@@ -166,8 +248,13 @@ void ProtectOnTick()
       //---    (100% = 1000 pts / 200% = 2000 pts)
       if(rrTarget > 0.0 && profPts >= rrTarget)
         {
-         ClosePositionByTicket(ticket, "RR");
-         TrailRemove(ticket);
+         if(ClosePositionByTicket(ticket, "RR"))
+           {
+            TrailRemove(ticket);
+            continue;
+           }
+
+         //--- ปิดไม่สำเร็จ: เก็บ State ไว้และลองใหม่ Tick ถัดไป
          continue;
         }
 
@@ -182,11 +269,24 @@ void ProtectOnTick()
         {
          double trailingArmPoints = InpCutLossPoints + InpTrailingPullback;
 
-         //--- จำว่าไม้เคยถูก Arm แล้วหรือยัง ก่อนอัปเดตกำไรสูงสุด
+         //--- Restore State เดิมก่อนเสมอ
+         //--- สำคัญ: แม้ราคาปัจจุบันย่อต่ำกว่า Arm Level แล้ว
+         //--- แต่หากเคย Arm ก่อน Restart ต้อง Trailing ต่อได้
          int oldIdx = TrailFind(ticket);
+
+         if(oldIdx < 0)
+           {
+            bool foundSaved = false;
+            double savedBest = TrailLoadBest(ticket, foundSaved);
+
+            if(foundSaved && savedBest >= trailingArmPoints)
+               TrailUpsert(ticket, savedBest);
+           }
+
+         oldIdx = TrailFind(ticket);
          bool wasArmed = (oldIdx >= 0);
 
-         //--- เริ่มติดตามราคาสูงสุด เมื่อกำไรแตะระดับ Arm เท่านั้น
+         //--- เริ่มติดตามราคาสูงสุดใหม่ เมื่อกำไรแตะระดับ Arm
          if(profPts >= trailingArmPoints)
             TrailUpsert(ticket, profPts);
 
@@ -215,8 +315,14 @@ void ProtectOnTick()
                   " pts | Pullback=", DoubleToString(InpTrailingPullback, 0),
                   " pts");
 
-            ClosePositionByTicket(ticket, "TRAILING-TP");
-            TrailRemove(ticket);
+            if(ClosePositionByTicket(ticket, "TRAILING-TP"))
+              {
+               TrailRemove(ticket);
+               continue;
+              }
+
+            //--- ปิดไม่สำเร็จ: ห้ามลบ Best Profit
+            //--- Tick ถัดไปจะพยายามปิดใหม่ตาม Trailing State เดิม
             continue;
            }
         }
