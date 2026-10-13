@@ -1,0 +1,30 @@
+2026.10.13 21:38:10.946	Hedge1.0 (XAUUSD,H1)	Hedge1: Engine พร้อมทำงาน Magic=8888 EffectiveLot=0.01
+2026.10.13 21:38:11.011	Hedge1.0 (XAUUSD,H1)	Hedge1: เริ่มระบบสำเร็จ | XAUUSD | Point=0.01 | ทุนเริ่มต้น=$50.00
+2026.10.13 21:39:53.823	Hedge1.0 (XAUUSD,H1)	Hedge1: ปิดระบบแล้ว (เหตุผล 5)
+2026.10.13 21:39:53.823	Hedge1.0 (XAUUSD,H1)	Hedge1: Engine พร้อมทำงาน Magic=8888 EffectiveLot=0.01
+2026.10.13 21:39:53.879	Hedge1.0 (XAUUSD,H1)	Hedge1: เริ่มระบบสำเร็จ | XAUUSD | Point=0.01 | ทุนเริ่มต้น=$50.00
+2026.10.13 21:39:54.636	Hedge1.0 (XAUUSD,H1)	Hedge1: AUTO READY -> เปิด Hedge ใหม่ | Spread=23.0 / Max=25 | Timeout=60 sec | Lot=0.01
+2026.10.13 21:39:54.876	Hedge1.0 (XAUUSD,H1)	Hedge1: [HEDGE] slippage 4.0 pts (4167.35 -> 4167.31)
+2026.10.13 21:39:55.181	Hedge1.0 (XAUUSD,H1)	Hedge1: [HEDGE] slippage 4.0 pts (4167.08 -> 4167.12)
+2026.10.13 21:39:55.181	Hedge1.0 (XAUUSD,H1)	Hedge1: เปิดคู่ Hedge สำเร็จ lot=0.01
+2026.10.13 21:39:55.624	Hedge1.0 (XAUUSD,H1)	Hedge1: [CUTLOSS-SL] แก้ SL สำเร็จจริง #2090775275 | New SL=4170.12
+2026.10.13 21:39:55.879	Hedge1.0 (XAUUSD,H1)	Hedge1: [CUTLOSS-SL] แก้ SL สำเร็จจริง #2090775272 | New SL=4164.31
+2026.10.13 21:44:18.930	Hedge1.0 (XAUUSD,H1)	Hedge1: [BREAK-EVEN] แก้ SL สำเร็จจริง #2090775272 | New SL=4167.91
+2026.10.13 21:45:58.310	Hedge1.0 (XAUUSD,H1)	Hedge1: AUTO READY -> เปิด Hedge ใหม่ | Spread=23.0 / Max=25 | Timeout=60 sec | Lot=0.01
+2026.10.13 21:45:58.554	Hedge1.0 (XAUUSD,H1)	Hedge1: [HEDGE] slippage 2.0 pts (4170.04 -> 4170.06)
+2026.10.13 21:45:58.798	Hedge1.0 (XAUUSD,H1)	Hedge1: เปิดคู่ Hedge สำเร็จ lot=0.01
+2026.10.13 21:45:59.233	Hedge1.0 (XAUUSD,H1)	Hedge1: [CUTLOSS-SL] แก้ SL สำเร็จจริง #2090788354 | New SL=4172.83
+2026.10.13 21:45:59.469	Hedge1.0 (XAUUSD,H1)	Hedge1: [CUTLOSS-SL] แก้ SL สำเร็จจริง #2090788342 | New SL=4167.06
+2026.10.13 21:46:23.528	Hedge1.0 (XAUUSD,H1)	Hedge1: [MANUAL] slippage 9.0 pts (4169.49 -> 4169.58)
+2026.10.13 21:46:23.798	Hedge1.0 (XAUUSD,H1)	Hedge1: [CUTLOSS-SL] แก้ SL สำเร็จจริง #2090789021 | New SL=4166.58
+2026.10.13 21:46:29.632	Hedge1.0 (XAUUSD,H1)	Hedge1: [MANUAL] slippage 4.0 pts (4169.50 -> 4169.54)
+2026.10.13 21:46:29.894	Hedge1.0 (XAUUSD,H1)	Hedge1: [CUTLOSS-SL] แก้ SL สำเร็จจริง #2090789292 | New SL=4172.54
+2026.10.13 21:46:40.760	Hedge1.0 (XAUUSD,H1)	Hedge1: [CLOSE-BUY] ปิดไม้ #2090789021 สำเร็จจริง | ราคา=4169.71 | volume=0.01
+2026.10.13 21:46:41.008	Hedge1.0 (XAUUSD,H1)	Hedge1: [CLOSE-BUY] ปิดไม้ #2090788342 สำเร็จจริง | ราคา=4169.71 | volume=0.01
+2026.10.13 21:46:44.366	Hedge1.0 (XAUUSD,H1)	Hedge1: [CLOSE-SELL] ปิดไม้ #2090789292 สำเร็จจริง | ราคา=4169.92 | volume=0.01
+2026.10.13 21:46:44.605	Hedge1.0 (XAUUSD,H1)	Hedge1: [CLOSE-SELL] ปิดไม้ #2090788354 สำเร็จจริง | ราคา=4169.91 | volume=0.01
+2026.10.13 21:46:48.018	Hedge1.0 (XAUUSD,H1)	Hedge1: เปิดคู่ Hedge สำเร็จ lot=0.01
+2026.10.13 21:46:48.251	Hedge1.0 (XAUUSD,H1)	Hedge1: [CUTLOSS-SL] แก้ SL สำเร็จจริง #2090789905 | New SL=4172.65
+2026.10.13 21:46:48.477	Hedge1.0 (XAUUSD,H1)	Hedge1: [CUTLOSS-SL] แก้ SL สำเร็จจริง #2090789900 | New SL=4166.88
+2026.10.13 21:46:58.150	Hedge1.0 (XAUUSD,H1)	Hedge1: [CLOSE-ALL] ปิดไม้ #2090789900 สำเร็จจริง | ราคา=4169.80 | volume=0.01
+2026.10.13 21:46:58.394	Hedge1.0 (XAUUSD,H1)	Hedge1: [CLOSE-ALL] ปิดไม้ #2090789905 สำเร็จจริง | ราคา=4170.00 | volume=0.01

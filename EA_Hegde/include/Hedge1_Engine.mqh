@@ -126,6 +126,16 @@ ENUM_ORDER_TYPE_FILLING GetSymbolFilling()
   }
 
 //+------------------------------------------------------------------+
+//| ตรวจว่าคำสั่ง Trade ทำสำเร็จจริงที่ฝั่ง Server หรือไม่             |
+//| หมายเหตุ: OrderSend=true แปลว่า Terminal ส่ง Request ได้           |
+//| แต่ต้องตรวจ retcode ต่อ จึงจะรู้ว่า Broker ทำสำเร็จจริง             |
+//+------------------------------------------------------------------+
+bool IsTradeRetcodeDone(uint retcode)
+  {
+   return(retcode == TRADE_RETCODE_DONE);
+  }
+
+//+------------------------------------------------------------------+
 //| ปิดไม้รายตัวด้วย ticket ผ่าน OrderSend ตรงๆ                        |
 //+------------------------------------------------------------------+
 bool RawPositionClose(ulong ticket, string tag)
@@ -156,12 +166,25 @@ bool RawPositionClose(ulong ticket, string tag)
 
    if(!OrderSend(req, res))
      {
-      Print("Hedge1: [", tag, "] ปิดไม้ #", ticket, " ล้มเหลว retcode=", res.retcode,
+      Print("Hedge1: [", tag, "] ส่งคำสั่งปิดไม้ #", ticket,
+            " ล้มเหลว retcode=", res.retcode,
             " (", res.comment, ") error=", GetLastError());
       return(false);
      }
-   Print("Hedge1: [", tag, "] ปิดไม้ #", ticket, " สำเร็จ ราคา ",
-         DoubleToString(res.price, _Digits));
+
+   //--- สำคัญ: OrderSend ผ่าน ไม่ได้แปลว่าปิดสำเร็จเสมอไป
+   if(!IsTradeRetcodeDone(res.retcode))
+     {
+      Print("Hedge1: [", tag, "] Broker ปฏิเสธ/ปิดไม่สมบูรณ์ #", ticket,
+            " retcode=", res.retcode,
+            " (", res.comment, ")",
+            " | Position ยังต้องถือว่าเปิดอยู่");
+      return(false);
+     }
+
+   Print("Hedge1: [", tag, "] ปิดไม้ #", ticket,
+         " สำเร็จจริง | ราคา=", DoubleToString(res.price, _Digits),
+         " | volume=", DoubleToString(res.volume, 2));
    return(true);
   }
 
@@ -182,10 +205,24 @@ bool RawPositionModify(ulong ticket, double newSL, double keepTP, string tag)
 
    if(!OrderSend(req, res))
      {
-      Print("Hedge1: [", tag, "] แก้ SL ไม้ #", ticket, " ล้มเหลว retcode=", res.retcode,
+      Print("Hedge1: [", tag, "] ส่งคำสั่งแก้ SL ไม้ #", ticket,
+            " ล้มเหลว retcode=", res.retcode,
             " (", res.comment, ") error=", GetLastError());
       return(false);
      }
+
+   //--- สำคัญ: ต้องตรวจว่าฝั่ง Broker ยอมแก้ SL จริง
+   if(!IsTradeRetcodeDone(res.retcode))
+     {
+      Print("Hedge1: [", tag, "] Broker ปฏิเสธการแก้ SL #", ticket,
+            " retcode=", res.retcode,
+            " (", res.comment, ")",
+            " | SL เดิมยังอาจคงอยู่");
+      return(false);
+     }
+
+   Print("Hedge1: [", tag, "] แก้ SL สำเร็จจริง #", ticket,
+         " | New SL=", DoubleToString(req.sl, _Digits));
    return(true);
   }
 
