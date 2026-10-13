@@ -98,11 +98,12 @@ bool ClosePositionByTicket(ulong ticket, string reason)
   }
 
 //+------------------------------------------------------------------+
-//| แก้ไข SL ของไม้ (คงค่า TP เดิมไว้) + log ทุกครั้งที่ล้มเหลว       |
+//| แก้ไข SL ของไม้ (คงค่า TP เดิมไว้)                               |
+//| คืนค่า true เมื่อ Broker ยอมแก้ SL สำเร็จจริง                     |
 //+------------------------------------------------------------------+
-void ModifySL(ulong ticket, double newSL, double keepTP, string tag)
+bool ModifySL(ulong ticket, double newSL, double keepTP, string tag)
   {
-   RawPositionModify(ticket, newSL, keepTP, tag);
+   return(RawPositionModify(ticket, newSL, keepTP, tag));
   }
 
 //+------------------------------------------------------------------+
@@ -134,15 +135,31 @@ void ProtectOnTick()
       double tp    = PositionGetDouble(POSITION_TP);
       double profPts = GetProfitPoints(dir, entry);
 
-      //--- 1) Cut Loss: ใส่ SL จริงไว้เป็นเสื้อกั๊กตั้งแต่เจอไม้ครั้งแรก
-      //---    (แม้เน็ตหลุด/EA ตาย ไม้ก็โดนตัดที่ 1000 Points ตามกติกา)
-      if(sl == 0.0)
+      //--- 1) Cut Loss
+      //--- SL ชั้นแรกถูกส่งมากับ Order ตั้งแต่เปิด
+      //--- ตรงนี้ทำหน้าที่ตรวจและปรับให้ระยะ Cut Loss
+      //--- อิงราคา Fill จริงของ Position เพื่อให้แม่นที่สุด
+      double exactCutSL = (dir == POSITION_TYPE_BUY)
+                          ? entry - PointsToPrice(InpCutLossPoints)
+                          : entry + PointsToPrice(InpCutLossPoints);
+
+      exactCutSL = NormalizeDouble(exactCutSL, _Digits);
+
+      //--- ก่อนถึง Break-even ต้องรักษา SL ให้ตรง Cut Loss จริงเสมอ
+      bool beforeBreakEven = (InpBreakEvenMode == BE_OFF
+                               || profPts < InpBreakEvenTrigger);
+
+      double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+      if(tickSize <= 0.0)
+         tickSize = _Point;
+
+      bool cutSLDifferent = (sl == 0.0
+                              || MathAbs(sl - exactCutSL) >= tickSize);
+
+      if(beforeBreakEven && cutSLDifferent)
         {
-         double cutSL = (dir == POSITION_TYPE_BUY)
-                        ? entry - PointsToPrice(InpCutLossPoints)
-                        : entry + PointsToPrice(InpCutLossPoints);
-         ModifySL(ticket, cutSL, tp, "CUTLOSS-SL");
-         sl = cutSL;
+         if(ModifySL(ticket, exactCutSL, tp, "CUTLOSS-SL"))
+            sl = exactCutSL;
         }
 
       //--- 2) R:R: ปิดทำกำไรเมื่อกำไรถึง % ของ Break-even Trigger

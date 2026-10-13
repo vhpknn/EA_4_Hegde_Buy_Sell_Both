@@ -47,6 +47,12 @@ int OnInit()
       Alert("Hedge 1.0: ค่า Lot Step / เงินต่อบันได ต้องมากกว่า 0");
       return(INIT_FAILED);
      }
+   if(InpCutLossPoints <= 0)
+     {
+      Alert("Hedge 1.0: Cut Loss Points ต้องมากกว่า 0 เสมอ");
+      return(INIT_FAILED);
+     }
+
    if(InpBreakEvenTrigger <= 0 && InpBreakEvenMode != BE_OFF)
      {
       Alert("Hedge 1.0: Break-even Trigger ต้องมากกว่า 0 ถ้าเปิดใช้ Break-even");

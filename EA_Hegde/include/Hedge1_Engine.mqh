@@ -79,11 +79,32 @@ bool OpenOneOrder(ENUM_POSITION_TYPE dir, double lot, string tag)
      {
       req.type  = ORDER_TYPE_BUY;
       req.price = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+
+      //--- ส่ง Cut Loss SL ไปพร้อม Buy Order ตั้งแต่ต้น
+      req.sl = NormalizeDouble(
+                  req.price - PointsToPrice(InpCutLossPoints),
+                  _Digits
+               );
      }
    else
      {
       req.type  = ORDER_TYPE_SELL;
       req.price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+
+      //--- ส่ง Cut Loss SL ไปพร้อม Sell Order ตั้งแต่ต้น
+      req.sl = NormalizeDouble(
+                  req.price + PointsToPrice(InpCutLossPoints),
+                  _Digits
+               );
+     }
+
+   //--- Guard: ห้ามเปิดไม้หากราคาหรือ SL คำนวณผิดปกติ
+   if(req.price <= 0.0 || req.sl <= 0.0)
+     {
+      Print("Hedge1: [", tag, "] ปฏิเสธการเปิด Order เพราะราคา/SL ไม่ถูกต้อง",
+            " | Price=", DoubleToString(req.price, _Digits),
+            " | SL=", DoubleToString(req.sl, _Digits));
+      return(false);
      }
 
    if(!OrderSend(req, res))
@@ -93,8 +114,8 @@ bool OpenOneOrder(ENUM_POSITION_TYPE dir, double lot, string tag)
       return(false);
      }
 
-   if(res.retcode != TRADE_RETCODE_DONE && res.retcode != TRADE_RETCODE_DONE_PARTIAL
-      && res.retcode != TRADE_RETCODE_PLACED)
+   if(res.retcode != TRADE_RETCODE_DONE
+      && res.retcode != TRADE_RETCODE_DONE_PARTIAL)
      {
       Print("Hedge1: [", tag, "] เปิดออเดอร์ล้มเหลว retcode=", res.retcode,
             " (", res.comment, ")");
@@ -253,55 +274,188 @@ int CloseOneSide(ENUM_POSITION_TYPE dir, string tag)
   }
 
 //+------------------------------------------------------------------+
+//| รวม Volume ของ Position ฝั่งที่ระบุ                               |
+//| ใช้ตรวจว่า Lot จริงตรงกับ Lot ที่ระบบขอหรือไม่                     |
+//+------------------------------------------------------------------+
+double GetSideVolume(ENUM_POSITION_TYPE dir)
+  {
+   double totalVolume = 0.0;
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0)
+         continue;
+
+      if(PositionGetString(POSITION_SYMBOL) != _Symbol)
+         continue;
+
+      if(PositionGetInteger(POSITION_MAGIC) != InpMagicNumber)
+         continue;
+
+      if((ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE) != dir)
+         continue;
+
+      totalVolume += PositionGetDouble(POSITION_VOLUME);
+     }
+
+   return(totalVolume);
+  }
+
+//+------------------------------------------------------------------+
+//| ตรวจว่า Volume ที่เปิดจริงตรงกับ Lot ที่ร้องขอหรือไม่              |
+//+------------------------------------------------------------------+
+bool IsLotMatched(double actualLot, double expectedLot)
+  {
+   double volumeStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+
+   if(volumeStep <= 0.0)
+      volumeStep = 0.01;
+
+   //--- ยอมให้ต่างได้ไม่เกินครึ่งหนึ่งของ Volume Step
+   return(MathAbs(actualLot - expectedLot) < volumeStep * 0.5);
+  }
+
+//+------------------------------------------------------------------+
+//| ตรวจว่า Hedge Pair สมบูรณ์จริงหรือไม่                              |
+//| ต้องมี Buy 1, Sell 1 และ Lot ทั้งสองฝั่งต้องตรงกัน                 |
+//+------------------------------------------------------------------+
+bool IsExactHedgePair(double expectedLot)
+  {
+   int buyCount  = CountSide(POSITION_TYPE_BUY);
+   int sellCount = CountSide(POSITION_TYPE_SELL);
+
+   double buyLot  = GetSideVolume(POSITION_TYPE_BUY);
+   double sellLot = GetSideVolume(POSITION_TYPE_SELL);
+
+   return(buyCount == 1
+          && sellCount == 1
+          && IsLotMatched(buyLot, expectedLot)
+          && IsLotMatched(sellLot, expectedLot));
+  }
+
+//+------------------------------------------------------------------+
+//| Rollback Position ของ Hedge ที่เปิดไม่สมบูรณ์                       |
+//| พยายามปิดสูงสุด 3 รอบ และตรวจว่า Position หายจริง                 |
+//+------------------------------------------------------------------+
+bool RollbackHedgePair()
+  {
+   for(int attempt = 1; attempt <= HEDGE_RETRY_MAX; attempt++)
+     {
+      int buyCount  = CountSide(POSITION_TYPE_BUY);
+      int sellCount = CountSide(POSITION_TYPE_SELL);
+
+      if(buyCount == 0 && sellCount == 0)
+        {
+         Print("Hedge1: HEDGE ROLLBACK สำเร็จ | Basket ว่าง");
+         return(true);
+        }
+
+      Print("Hedge1: HEDGE ROLLBACK รอบ ", attempt,
+            " | Buy=", buyCount,
+            " Sell=", sellCount);
+
+      if(buyCount > 0)
+         CloseOneSide(POSITION_TYPE_BUY, "HEDGE-ROLLBACK");
+
+      if(sellCount > 0)
+         CloseOneSide(POSITION_TYPE_SELL, "HEDGE-ROLLBACK");
+     }
+
+   int remainingBuy  = CountSide(POSITION_TYPE_BUY);
+   int remainingSell = CountSide(POSITION_TYPE_SELL);
+
+   Print("Hedge1: CRITICAL - HEDGE ROLLBACK ปิดไม่หมด",
+         " | Buy=", remainingBuy,
+         " Sell=", remainingSell);
+
+   return(false);
+}
+
+//+------------------------------------------------------------------+
 //| เปิดคู่ Hedge (Buy + Sell) แบบ Mirror-and-Verify                  |
-//| ส่งสองฝั่งติดกัน -> ตรวจ -> retry ฝั่งที่พลาด                    |
-//| ถ้ายังไม่สมมาตร -> rollback ปิดฝั่งที่เปิดสำเร็จ เพื่อคงความสมดุล |
+//| ส่งสองฝั่งติดกัน -> ตรวจ Position จริง -> Rollback หากไม่สมมาตร   |
 //+------------------------------------------------------------------+
 bool OpenHedgePair()
   {
    if(!g_engineReady)
       return(false);
 
-   //--- กฎสำคัญ: ห้ามเปิด Hedge ใหม่หากยังมีไม้ของ Magic นี้บน Symbol นี้อยู่
+   //--- One Basket Only: ห้ามเปิด Hedge ใหม่ ถ้ายังมี Position ของ EA ค้างอยู่
    int existingBuy  = CountSide(POSITION_TYPE_BUY);
    int existingSell = CountSide(POSITION_TYPE_SELL);
 
    if(existingBuy > 0 || existingSell > 0)
      {
-      Print("Hedge1: ปฏิเสธการเปิด Hedge ใหม่ เพราะ Basket ยังไม่ว่าง | Buy=",
-            existingBuy, " Sell=", existingSell);
+      Print("Hedge1: ปฏิเสธการเปิด Hedge ใหม่ เพราะ Basket ยังไม่ว่าง",
+            " | Buy=", existingBuy,
+            " Sell=", existingSell);
       return(false);
      }
 
    double lot = GetEffectiveLot();
-   bool okBuy  = OpenOneOrder(POSITION_TYPE_BUY,  lot, "HEDGE");
-   bool okSell = OpenOneOrder(POSITION_TYPE_SELL, lot, "HEDGE");
 
-   //--- retry ฝั่งที่ไม่สำเร็จ
-   for(int i = 0; i < HEDGE_RETRY_MAX && !(okBuy && okSell); i++)
+   //--- เปิด Buy และ Sell รอบแรก
+   OpenOneOrder(POSITION_TYPE_BUY,  lot, "HEDGE");
+   OpenOneOrder(POSITION_TYPE_SELL, lot, "HEDGE");
+
+   //--- Retry เฉพาะฝั่งที่ Position ยังไม่เกิดจริง
+   //--- หากมี Position เกิน 1 ไม้ จะไม่ Retry เพิ่ม เพื่อกัน Hedge ซ้อน
+   for(int attempt = 1; attempt <= HEDGE_RETRY_MAX; attempt++)
      {
-      if(!okBuy)
-         okBuy = OpenOneOrder(POSITION_TYPE_BUY, lot, "HEDGE-RETRY");
-      if(!okSell)
-         okSell = OpenOneOrder(POSITION_TYPE_SELL, lot, "HEDGE-RETRY");
+      int buyCount  = CountSide(POSITION_TYPE_BUY);
+      int sellCount = CountSide(POSITION_TYPE_SELL);
+
+      if(buyCount > 1 || sellCount > 1)
+         break;
+
+      if(buyCount == 1 && sellCount == 1)
+         break;
+
+      if(buyCount == 0)
+        {
+         Print("Hedge1: Retry เปิด Buy รอบ ", attempt);
+         OpenOneOrder(POSITION_TYPE_BUY, lot, "HEDGE-RETRY");
+        }
+
+      if(sellCount == 0)
+        {
+         Print("Hedge1: Retry เปิด Sell รอบ ", attempt);
+         OpenOneOrder(POSITION_TYPE_SELL, lot, "HEDGE-RETRY");
+        }
      }
 
-   if(okBuy && okSell)
+   //--- ตรวจ Position จริง ไม่ใช้แค่ผลลัพธ์จาก OrderSend
+   if(IsExactHedgePair(lot))
      {
       g_emptySince       = 0;
       g_buyMissingSince  = 0;
       g_sellMissingSince = 0;
-      Print("Hedge1: เปิดคู่ Hedge สำเร็จ lot=", DoubleToString(lot, 2));
+
+      Print("Hedge1: เปิดคู่ Hedge สำเร็จจริง",
+            " | Buy=", CountSide(POSITION_TYPE_BUY),
+            " Lot=", DoubleToString(GetSideVolume(POSITION_TYPE_BUY), 2),
+            " | Sell=", CountSide(POSITION_TYPE_SELL),
+            " Lot=", DoubleToString(GetSideVolume(POSITION_TYPE_SELL), 2));
+
       return(true);
      }
 
-   //--- rollback: ปิดฝั่งที่เปิดสำเร็จ ไม่ปล่อยให้พอร์ตเหลือฝั่งเดียวโดยไม่ตั้งใจ
-   if(okBuy)
-      CloseOneSide(POSITION_TYPE_BUY, "HEDGE-ROLLBACK");
-   if(okSell)
-      CloseOneSide(POSITION_TYPE_SELL, "HEDGE-ROLLBACK");
+   //--- Position ไม่สมมาตร / Lot ไม่ตรง / Partial Fill / เปิดซ้อน
+   int finalBuyCount  = CountSide(POSITION_TYPE_BUY);
+   int finalSellCount = CountSide(POSITION_TYPE_SELL);
 
-   Print("Hedge1: เปิดคู่ Hedge ล้มเหลว ทำ rollback เรียบร้อย");
+   double finalBuyLot  = GetSideVolume(POSITION_TYPE_BUY);
+   double finalSellLot = GetSideVolume(POSITION_TYPE_SELL);
+
+   Print("Hedge1: Hedge Pair ไม่สมบูรณ์ -> Rollback",
+         " | Buy=", finalBuyCount,
+         " Lot=", DoubleToString(finalBuyLot, 2),
+         " | Sell=", finalSellCount,
+         " Lot=", DoubleToString(finalSellLot, 2),
+         " | ExpectedLot=", DoubleToString(lot, 2));
+
+   RollbackHedgePair();
    return(false);
   }
 
