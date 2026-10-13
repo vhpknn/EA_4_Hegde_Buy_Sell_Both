@@ -1,0 +1,237 @@
+//+------------------------------------------------------------------+
+//|                                             Hedge1_Protect.mqh   |
+//| ระบบป้องกัน: Cut Loss, Auto Break-even (3 โหมด), R:R,            |
+//| Trailing TP ตามราคาที่ดีที่สุด - ทำงานต่อแม้ Session บล็อก        |
+//| ปิดไม้/แก้ SL ผ่านฟังก์ชัน OrderSend ตรงจาก Engine              |
+//+------------------------------------------------------------------+
+#ifndef HEDGE1_PROTECT_MQH
+#define HEDGE1_PROTECT_MQH
+
+#include "Hedge1_Inputs.mqh"
+#include "Hedge1_Engine.mqh"
+#include "Hedge1_Utils.mqh"
+
+//--- ตัวติดตามกำไรสูงสุดของแต่ละไม้ (ใช้กับ Trailing TP)
+struct STrailTrack
+  {
+   ulong  ticket;    // เลขไม้
+   double bestPts;  // กำไรสูงสุด (Points) ที่เคยเห็น
+  };
+STrailTrack g_trail[];
+
+//+------------------------------------------------------------------+
+//| หา index ของไม้ในตัวติดตาม (-1 = ไม่มี)                          |
+//+------------------------------------------------------------------+
+int TrailFind(ulong ticket)
+  {
+   for(int i = 0; i < ArraySize(g_trail); i++)
+      if(g_trail[i].ticket == ticket)
+         return(i);
+   return(-1);
+  }
+
+//+------------------------------------------------------------------+
+//| บันทึก/อัปเดตกำไรสูงสุดของไม้ (บันทึกเฉพาะค่าที่ดีขึ้นเท่านั้น)    |
+//+------------------------------------------------------------------+
+void TrailUpsert(ulong ticket, double profitPts)
+  {
+   int idx = TrailFind(ticket);
+   if(idx < 0)
+     {
+      int n = ArraySize(g_trail);
+      ArrayResize(g_trail, n + 1);
+      g_trail[n].ticket  = ticket;
+      g_trail[n].bestPts = profitPts;
+      return;
+     }
+   if(profitPts > g_trail[idx].bestPts)
+      g_trail[idx].bestPts = profitPts;
+  }
+
+//+------------------------------------------------------------------+
+//| ลบไม้ออกจากตัวติดตาม                                              |
+//+------------------------------------------------------------------+
+void TrailRemove(ulong ticket)
+  {
+   int idx = TrailFind(ticket);
+   if(idx < 0)
+      return;
+   int n = ArraySize(g_trail);
+   for(int i = idx; i < n - 1; i++)
+      g_trail[i] = g_trail[i + 1];
+   ArrayResize(g_trail, n - 1);
+  }
+
+//+------------------------------------------------------------------+
+//| เก็บกวาดรายชื่อไม้ที่ปิดไปแล้วออกจากตัวติดตาม                    |
+//+------------------------------------------------------------------+
+void TrailCleanup()
+  {
+   for(int i = ArraySize(g_trail) - 1; i >= 0; i--)
+      if(!PositionSelectByTicket(g_trail[i].ticket))
+         TrailRemove(g_trail[i].ticket);
+  }
+
+//+------------------------------------------------------------------+
+//| กำไร/ขาดทุนปัจจุบันของไม้ เป็น Points (ตามหน่วย InpPointDigits)   |
+//+------------------------------------------------------------------+
+double GetProfitPoints(ENUM_POSITION_TYPE dir, double entry)
+  {
+   double pt = HedgePoint();
+   if(pt <= 0.0)
+      return(0.0);
+   if(dir == POSITION_TYPE_BUY)
+     {
+      double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+      return((bid - entry) / pt);
+     }
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   return((entry - ask) / pt);
+  }
+
+//+------------------------------------------------------------------+
+//| ปิดไม้รายตัว (ใช้กับ RR และ Trailing TP)                          |
+//+------------------------------------------------------------------+
+bool ClosePositionByTicket(ulong ticket, string reason)
+  {
+   return(RawPositionClose(ticket, reason));
+  }
+
+//+------------------------------------------------------------------+
+//| แก้ไข SL ของไม้ (คงค่า TP เดิมไว้) + log ทุกครั้งที่ล้มเหลว       |
+//+------------------------------------------------------------------+
+void ModifySL(ulong ticket, double newSL, double keepTP, string tag)
+  {
+   RawPositionModify(ticket, newSL, keepTP, tag);
+  }
+
+//+------------------------------------------------------------------+
+//| หัวใจของ Protect - เรียกทุก Tick (ก่อน EngineOnTick)                |
+//| ลำดับ: ใส่ SL ตัดขาดทุน -> RR -> Trailing TP -> Break-even        |
+//+------------------------------------------------------------------+
+void ProtectOnTick()
+  {
+   if(!g_engineReady)
+      return;
+
+   TrailCleanup();
+
+   double rrTarget = InpRRPercent / 100.0 * InpBreakEvenTrigger;
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0)
+         continue;
+      if(PositionGetString(POSITION_SYMBOL) != _Symbol)
+         continue;
+      if(PositionGetInteger(POSITION_MAGIC) != InpMagicNumber)
+         continue;
+
+      ENUM_POSITION_TYPE dir = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      double entry = PositionGetDouble(POSITION_PRICE_OPEN);
+      double sl    = PositionGetDouble(POSITION_SL);
+      double tp    = PositionGetDouble(POSITION_TP);
+      double profPts = GetProfitPoints(dir, entry);
+
+      //--- 1) Cut Loss: ใส่ SL จริงไว้เป็นเสื้อกั๊กตั้งแต่เจอไม้ครั้งแรก
+      //---    (แม้เน็ตหลุด/EA ตาย ไม้ก็โดนตัดที่ 1000 Points ตามกติกา)
+      if(sl == 0.0)
+        {
+         double cutSL = (dir == POSITION_TYPE_BUY)
+                        ? entry - PointsToPrice(InpCutLossPoints)
+                        : entry + PointsToPrice(InpCutLossPoints);
+         ModifySL(ticket, cutSL, tp, "CUTLOSS-SL");
+         sl = cutSL;
+        }
+
+      //--- 2) R:R: ปิดทำกำไรเมื่อกำไรถึง % ของ Break-even Trigger
+      //---    (100% = 1000 pts / 200% = 2000 pts)
+      if(rrTarget > 0.0 && profPts >= rrTarget)
+        {
+         ClosePositionByTicket(ticket, "RR");
+         TrailRemove(ticket);
+         continue;
+        }
+
+      //--- 3) Trailing TP แบบ Armed Trailing
+      //--- เริ่มทำงานต่อเมื่อกำไรถึง:
+      //--- Cut Loss Points + Trailing Pullback
+      //--- ตัวอย่าง CutLoss=1000, Pullback=500:
+      //--- กำไรต้องถึง +1500 ก่อน จึงเริ่มมี Trailing TP
+      //--- พีค +1800 -> ปิดเมื่อย่อลงถึง +1300
+      //--- พีค +1900 -> ปิดเมื่อย่อลงถึง +1400
+      if(InpUseTrailingTP)
+        {
+         double trailingArmPoints = InpCutLossPoints + InpTrailingPullback;
+
+         //--- จำว่าไม้เคยถูก Arm แล้วหรือยัง ก่อนอัปเดตกำไรสูงสุด
+         int oldIdx = TrailFind(ticket);
+         bool wasArmed = (oldIdx >= 0);
+
+         //--- เริ่มติดตามราคาสูงสุด เมื่อกำไรแตะระดับ Arm เท่านั้น
+         if(profPts >= trailingArmPoints)
+            TrailUpsert(ticket, profPts);
+
+         int idx = TrailFind(ticket);
+
+         //--- Log เพียงครั้งเดียว เมื่อ Trailing TP เริ่มทำงาน
+         if(!wasArmed && idx >= 0)
+           {
+            double exitAt = g_trail[idx].bestPts - InpTrailingPullback;
+
+            Print("Hedge1: Trailing TP ARMED #", ticket,
+                  " | Profit=", DoubleToString(profPts, 0),
+                  " pts | Arm=", DoubleToString(trailingArmPoints, 0),
+                  " pts | Exit if retrace to ",
+                  DoubleToString(exitAt, 0), " pts");
+           }
+
+         //--- เมื่อเคย Arm แล้ว ให้ตรวจการย่อเสมอ
+         //--- แม้ราคาย่อต่ำกว่า 1500 ก็ยังต้องปิดได้ตาม Trailing
+         if(idx >= 0
+            && g_trail[idx].bestPts - profPts >= InpTrailingPullback)
+           {
+            Print("Hedge1: Trailing TP CLOSE #", ticket,
+                  " | Best=", DoubleToString(g_trail[idx].bestPts, 0),
+                  " pts | Current=", DoubleToString(profPts, 0),
+                  " pts | Pullback=", DoubleToString(InpTrailingPullback, 0),
+                  " pts");
+
+            ClosePositionByTicket(ticket, "TRAILING-TP");
+            TrailRemove(ticket);
+            continue;
+           }
+        }
+
+      //--- 4) Auto Break-even (ล็อกกำไรตามสัดส่วน % ของระยะที่วิ่งได้)
+      if(InpBreakEvenMode != BE_OFF && profPts >= InpBreakEvenTrigger)
+        {
+         double lockPts = 0.0;
+         if(InpBreakEvenMode == BE_TRAILING)
+           {
+            //--- เลื่อนตาม: นับเฉพาะ step ที่เต็ม 100 Points
+            //--- เช่น กำไร 1800 = 18 step -> ล็อก 20% ของ 1800 = +360
+            int stepCount = (int)MathFloor(profPts / InpBreakEvenStep);
+            double stepped = stepCount * InpBreakEvenStep;
+            lockPts = stepped * InpBreakEvenPct / 100.0;
+           }
+         else
+           {
+            //--- ไม่เลื่อน: ล็อกครั้งเดียวที่ 20% ของ Trigger (1000) = +200
+            lockPts = InpBreakEvenTrigger * InpBreakEvenPct / 100.0;
+           }
+
+         double newSL = (dir == POSITION_TYPE_BUY)
+                        ? entry + PointsToPrice(lockPts)
+                        : entry - PointsToPrice(lockPts);
+
+         //--- ขยับเฉพาะทิศที่ดีขึ้นเท่านั้น (Buy: SL ขึ้นเท่านั้น / Sell: ลงเท่านั้น)
+         bool better = (dir == POSITION_TYPE_BUY) ? (newSL > sl) : (newSL < sl);
+         if(better)
+            ModifySL(ticket, newSL, tp, "BREAK-EVEN");
+        }
+     }
+  }
+
+#endif // HEDGE1_PROTECT_MQH

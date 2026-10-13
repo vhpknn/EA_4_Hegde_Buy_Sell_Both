@@ -1,0 +1,110 @@
+---
+
+## 🎨 UI THEME RULES (กฎบังคับด้านหน้าตา Panel)
+
+### UI Theme มาตรฐาน
+
+ทุก EA ที่มี Panel, Dashboard, Button หรือ Chart Object ต้องใช้ธีมมาตรฐานนี้เสมอ:
+
+```text
+UI_THEME: HEDGE_DARK_NEON_V1 (LOCKED)
+```
+
+ไฟล์ Theme มาตรฐาน:
+
+```text
+HedgeUI_Theme.mqh
+```
+
+ตำแหน่งที่ต้องเก็บในแต่ละโปรเจกต์:
+
+```text
+MQL5/Experts/<ProjectName>/include/HedgeUI_Theme.mqh
+```
+
+### กฎการ Include Theme
+
+ทุกไฟล์ Panel ของ EA ใหม่ต้องมี:
+
+```cpp
+#include "HedgeUI_Theme.mqh"
+```
+
+ห้ามกำหนดสี Font ขนาด Panel หรือสีปุ่มใหม่เองในไฟล์ Panel หากมี Token เดิมใน `HedgeUI_Theme.mqh` ให้ใช้
+
+ตัวอย่างที่ถูกต้อง:
+
+```cpp
+ObjectSetInteger(0, panelName, OBJPROP_BGCOLOR, HUI_BG);
+ObjectSetInteger(0, labelName, OBJPROP_COLOR, HUI_GREEN);
+ObjectSetString(0, labelName, OBJPROP_FONT, HUI_FONT);
+ObjectSetInteger(0, labelName, OBJPROP_FONTSIZE, HUI_FONT_NORMAL);
+```
+
+### กฎสีและ Font ที่ต้องยึด
+
+```text
+Font หลัก:
+- Arial Bold
+
+ข้อมูลสำคัญ:
+- Effective Lot = Cyan Neon
+- Virtual Equity = Green Neon เมื่อค่าบวก / Red เมื่อค่าติดลบ
+- Closed Net = Green เมื่อกำไร / Red เมื่อขาดทุน / White เมื่อ 0
+- Open Floating = Green เมื่อกำไร / Red เมื่อขาดทุน / White เมื่อ 0
+- Cycle Loss = Red เมื่อขาดทุน / White เมื่อ 0
+
+Position:
+- Active > 0 = Yellow
+- Active = 0 = White
+- Buy > 0 = Blue
+- Buy = 0 = White
+- Sell > 0 = Red
+- Sell = 0 = White
+
+Status:
+- OPEN / ON = Green ทั้งแถว
+- BLOCK / CLOSE / OFF = Red ทั้งแถว
+
+Button:
+- BUY = Blue
+- SELL = Red
+- CLOSE BUY = Dark Blue + Bright Blue Thick Frame
+- CLOSE SELL = Dark Red + Bright Red Thick Frame
+- REFILL = Dark Gray
+- HEDGE OPEN = Purple
+- CLOSE ALL = Mustard / Gold
+```
+
+### Responsive Panel
+
+Panel ทุกตัวต้องมี:
+
+```text
+- Responsive Layout
+- Compact Mode เมื่อกราฟแคบ
+- Auto Minimize เมื่อกราฟแคบมาก
+- ปุ่ม - / + สำหรับย่อ/ขยาย
+- Footer อยู่ใต้ปุ่ม CLOSE ALL ฝั่งขวา
+```
+
+### ข้อห้าม
+
+```text
+- ห้ามเปลี่ยน Theme HEDGE_DARK_NEON_V1 เอง
+- ห้ามสร้างสีใหม่หรือ Font ใหม่โดยไม่จำเป็น
+- ห้ามใช้ Theme คนละแบบใน EA เดียวกัน
+- ห้ามแก้ HedgeUI_Theme.mqh เฉพาะ EA ตัวเดียว
+  หากต้องการเปลี่ยน Theme ให้สร้างเวอร์ชันใหม่ เช่น:
+  HEDGE_DARK_NEON_V2
+```
+
+### วิธีเริ่มโปรเจกต์ใหม่
+
+ก่อนเริ่มสร้าง Panel ของ EA ใหม่ ต้องตรวจสอบว่าไฟล์นี้มีอยู่:
+
+```text
+MQL5/Experts/<ProjectName>/include/HedgeUI_Theme.mqh
+```
+
+หากยังไม่มี ให้สร้าง/คัดลอกจาก Template ก่อนเริ่มเขียน Panel

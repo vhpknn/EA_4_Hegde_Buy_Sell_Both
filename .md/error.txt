@@ -1,0 +1,31 @@
+Hedge1.0.mq5			
+Hedge1_Inputs.mqh			
+Hedge1_Utils.mqh			
+Hedge1_Capital.mqh			
+Hedge1_Session.mqh			
+Hedge1_Engine.mqh			
+Trade.mqh			
+Object.mqh			
+StdLibErr.mqh			
+SymbolInfo.mqh			
+OrderInfo.mqh			
+HistoryOrderInfo.mqh			
+PositionInfo.mqh			
+DealInfo.mqh			
+mismatched #ifdef/#endif pair	Hedge1_Engine.mqh	6	1
+Hedge1_Protect.mqh			
+mismatched #ifdef/#endif pair	Hedge1_Protect.mqh	6	1
+Hedge1_Panel.mqh			
+Hedge1_Report.mqh			
+unexpected end of program		1	1
+'{' - unbalanced parentheses	Hedge1_Engine.mqh	378	3
+'SYMBOL_CALC_MODE_EXCH_OPTIONS' is deprecated, use 'SYMBOL_CALC_MODE_EXCH_FUTURES_FORTS' instead	SymbolInfo.mqh	402	12
+'POSITION_COMMISSION' is deprecated	PositionInfo.mqh	150	29
+'MQL5_OPTIMIZATION' is deprecated, use 'MQL_OPTIMIZATION' instead	Trade.mqh	150	23
+'MQL5_TESTING' is deprecated, use 'MQL_TESTER' instead	Trade.mqh	151	23
+wrong parameters count, 0 passed, but 1 requires	Trade.mqh	503	8
+   bool CTrade::IsStopped(const string)	Trade.mqh	135	22
+call resolves to 'bool CTrade::IsStopped(const string)' instead of builtin 'bool IsStopped()' due to new rules of method hiding	Trade.mqh	503	8
+   did you forget to specify the global scope '::IsStopped'?	Trade.mqh	503	8
+   see declaration of function 'CTrade::IsStopped'	Trade.mqh	135	22
+5 errors, 6 warnings		5	6

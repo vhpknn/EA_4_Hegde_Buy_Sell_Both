@@ -1,0 +1,32 @@
+ประโยคสั้นสำหรับใช้ในอนาคต
+เมื่อเปิดแชตใหม่หรือเริ่ม EA ตัวใหม่ ให้ส่ง 3 อย่าง:
+
+text
+1. Jigsaw-Patch-Rule.txt + CORE RULES Theme.txt
+2. HedgeUI_Theme.mqh
+3. Blueprint ของ EA ตัวใหม่
+แล้วพิมพ์เพิ่มด้านบนสุดว่า:
+
+text
+
+ใช้ UI_THEME: HEDGE_DARK_NEON_V1 (LOCKED)
+Theme file: HedgeUI_Theme.mqh
+Panel ทุกส่วนต้อง include Theme นี้
+
+
+แค่นี้ AI จะรู้ครบทั้ง:
+
+กฎการส่งโค้ดแบบ Jigsaw
+
+โครงสร้างไฟล์ local include/
+
+สไตล์ Panel ที่ต้องใช้
+
+สี Font ปุ่ม และสถานะแต่ละประเภท
+
+กติกา Responsive / Minimize
+
+ทำไมควรแยกเป็นกฎเฉพาะ
+Jigsaw Patch Rule เดิมควบคุมเรื่อง วิธีทำงานและวิธีส่งโค้ด เช่น Full Code, FIND/REPLACE, รอคำว่าเริ่มงาน ส่วน HedgeUI_Theme.mqh ควบคุมเรื่อง หน้าตาและมาตรฐาน UI ครับ
+
+การเพิ่มหัวข้อ UI THEME RULES เข้าไปใน Jigsaw Rule จะทำให้ทุกโปรเจกต์ใช้มาตรฐานเดียวกัน โดยไม่ต้องอธิบายสี/Font/ปุ่มใหม่ทุกครั้ง และยังไม่ปนกับกฎการแก้โค้ดเดิมของคุณ

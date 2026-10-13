@@ -1,0 +1,123 @@
+ได้ครับ วิธีที่ดีที่สุดคือทำให้ Panel ปัจจุบันเป็น **Design System หรือ Theme กลาง** แล้วตั้งชื่อมาตรฐานไว้ เช่น:
+
+```text
+HEDGE_DARK_NEON_V1
+```
+
+จากนั้น EA ตัวต่อไป คุณไม่ต้องอธิบายสี Font ปุ่ม หรือ Layout ใหม่ทุกครั้ง แค่ระบุว่า:
+
+```text
+ใช้ UI_THEME: HEDGE_DARK_NEON_V1 (LOCKED)
+ใช้ไฟล์ HedgeUI_Theme.mqh
+Panel ต้องใช้สี Font ปุ่ม และ Responsive Layout ตาม Theme นี้
+```
+
+ผมจัดทำไฟล์สำหรับเก็บเป็นมาตรฐานให้แล้ว 2 ไฟล์ครับ
+
+## ไฟล์ที่ได้
+
+### 1. UI Theme Specification
+
+ไฟล์ `UI_THEME_HEDGE_DARK_NEON_V1.md` เป็นเอกสารอธิบายธีมแบบคนอ่านเข้าใจง่าย มีครบทั้ง:
+
+- Font ทุกส่วน
+- ขนาด Font สำหรับ Normal / Compact Mode
+- สี Background, Border, Header, Label
+- สี Effective Lot, Virtual Equity, Closed Net
+- กฎสีค่าบวก/ลบ/ศูนย์
+- กฎสี Active / Buy / Sell
+- กฎสี Session, Spread และ Refill Timer
+- สีปุ่ม Buy, Sell, Close Buy, Close Sell, Refill, Hedge Open และ Close All
+- กติกา Panel Responsive
+- ตำแหน่ง Footer
+- กติกาการออก Theme เวอร์ชันใหม่ในอนาคต
+
+### 2. ไฟล์ Theme สำหรับ MQL5
+
+ไฟล์ `HedgeUI_Theme.mqh` มี Token สี, Font และขนาด Panel พร้อมเรียกใช้ใน EA ตัวใหม่ได้ทันที
+
+ตัวอย่างการใช้ใน EA ใหม่:
+
+```cpp
+#include "HedgeUI_Theme.mqh"
+```
+
+แล้วแทนที่จะเขียนสีเองซ้ำทุกโปรเจกต์:
+
+```cpp
+#define COL_BG C'18,18,18'
+#define COL_HEADER C'255,215,0'
+```
+
+ก็ใช้ชื่อ Theme กลาง:
+
+```cpp
+HUI_BG
+HUI_HEADER
+HUI_CYAN
+HUI_GREEN
+HUI_RED
+HUI_BTN_BUY
+HUI_BTN_SELL
+HUI_BTN_HEDGE
+```
+
+## วิธีเก็บไฟล์โดยไม่ปนกัน
+
+ตามแนวทางที่คุณชอบ คือทุก EA มีไฟล์ include อยู่ในโฟลเดอร์ตัวเอง ให้จัดแบบนี้:
+
+```text
+MQL5/
+└── Experts/
+    ├── Hedge1.0/
+    │   └── include/
+    │       └── HedgeUI_Theme.mqh
+    │
+    ├── EA_ตัวใหม่/
+    │   └── include/
+    │       └── HedgeUI_Theme.mqh
+    │
+    └── _Templates/
+        └── HEDGE_DARK_NEON_V1/
+            ├── UI_THEME_HEDGE_DARK_NEON_V1.md
+            └── HedgeUI_Theme.mqh
+```
+
+หลักการคือ:
+
+```text
+_Templates/
+= ต้นฉบับกลางสำหรับคัดลอก
+
+EA แต่ละตัว/include/
+= สำเนาเฉพาะของโปรเจกต์นั้น
+```
+
+จึงไม่ชน ไม่ปน และหาก EA ตัวหนึ่งต้องแก้ UI เฉพาะตัว ก็ไม่กระทบ EA อื่น
+
+## ประโยคมาตรฐานสำหรับใช้ครั้งต่อไป
+
+เวลาเริ่มทำ EA ใหม่ หรือคุยกับ AI ในแชตใหม่ ให้ส่งข้อความนี้พร้อม Blueprint:
+
+```text
+UI_THEME: HEDGE_DARK_NEON_V1 (LOCKED)
+
+ใช้ธีม Panel ตามไฟล์ HedgeUI_Theme.mqh และ
+UI_THEME_HEDGE_DARK_NEON_V1.md
+
+- Dark Background
+- Arial Bold
+- Effective Lot = Cyan Neon
+- Virtual Equity / Profit / ON / OPEN = Green Neon
+- Loss / OFF / BLOCK = Red
+- Active > 0 = Yellow
+- Buy > 0 = Blue
+- Sell > 0 = Red
+- Panel Responsive + Minimize
+- Footer อยู่ใต้ปุ่ม CLOSE ALL ฝั่งขวา
+
+ห้ามเปลี่ยนสี Font ปุ่ม หรือ Layout หลัก
+เว้นแต่ระบุเป็นคำสั่งใหม่อย่างชัดเจน
+```
+
+แค่นี้ EA ตัวใหม่จะเริ่มด้วยหน้าตาและมาตรฐานเดียวกับ Panel ปัจจุบันทันทีครับ ธีมนี้สะท้อนภาพล่าสุดที่คุณพอใจแล้ว ทั้งโทน Dark, ตัวเลข Neon และการแยกสถานะด้วยสีที่เห็นง่ายบนกราฟ
