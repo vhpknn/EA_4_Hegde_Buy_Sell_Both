@@ -53,14 +53,119 @@ int OnInit()
       return(INIT_FAILED);
      }
 
-   if(InpBreakEvenTrigger <= 0 && InpBreakEvenMode != BE_OFF)
+   //--- Trigger ใช้ทั้ง Break-even และ RR
+   if(InpBreakEvenTrigger <= 0
+      && (InpBreakEvenMode != BE_OFF || InpRRPercent > 0.0))
      {
-      Alert("Hedge 1.0: Break-even Trigger ต้องมากกว่า 0 ถ้าเปิดใช้ Break-even");
-      return(INIT_FAILED);
+      Alert("Hedge 1.0: Break-even Trigger ต้องมากกว่า 0 ถ้าเปิดใช้ BE หรือ RR");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   //--- ป้องกันหารด้วยศูนย์ใน BE แบบเลื่อนตาม
+   if(InpBreakEvenMode == BE_TRAILING && InpBreakEvenStep <= 0)
+     {
+      Alert("Hedge 1.0: Break-even Step ต้องมากกว่า 0");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   //--- 0% อนุญาตให้ใช้ล็อกที่ราคาเข้า
+   //--- ไม่รับ 100% ขึ้นไป ซึ่งตั้ง SL ถึงหรือเลยราคาปัจจุบัน
+   if(InpBreakEvenMode != BE_OFF
+      && (!MathIsValidNumber(InpBreakEvenPct)
+          || InpBreakEvenPct < 0.0
+          || InpBreakEvenPct >= 100.0))
+     {
+      Alert("Hedge 1.0: Break-even Percent ต้องอยู่ในช่วง 0 ถึงน้อยกว่า 100");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   //--- RR = 0 หมายถึงปิด RR
+   if(!MathIsValidNumber(InpRRPercent) || InpRRPercent < 0.0)
+     {
+      Alert("Hedge 1.0: RR Percent ต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   if(InpUseTrailingTP && InpTrailingPullback <= 0)
+     {
+      Alert("Hedge 1.0: Trailing Pullback ต้องมากกว่า 0");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   //--- Timeout = 0 อนุญาต แต่ห้ามติดลบ
+   if(InpUseTimeout && InpTimeoutSeconds < 0)
+     {
+      Alert("Hedge 1.0: Timeout Seconds ต้องไม่ติดลบ");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   if(InpUseSpreadCheck && InpMaxSpreadPoints < 0)
+     {
+      Alert("Hedge 1.0: Max Spread Points ต้องไม่ติดลบ");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   if(InpDeviationPoints < 0)
+     {
+      Alert("Hedge 1.0: Deviation Points ต้องไม่ติดลบ");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   if(InpEnableReport && InpReportDays <= 0)
+     {
+      Alert("Hedge 1.0: Report Days ต้องมากกว่า 0");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   //--- ไม่ใช้ Magic 0 ซึ่งอาจปะปนกับ Position แบบ Manual ภายนอก
+   if(InpMagicNumber <= 0)
+     {
+      Alert("Hedge 1.0: Magic Number ต้องมากกว่า 0");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   if(!MathIsValidNumber(InpBaseLot) || InpBaseLot <= 0.0)
+     {
+      Alert("Hedge 1.0: Base Lot ต้องเป็นตัวเลขมากกว่า 0");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   if(!MathIsValidNumber(InpLotIncrement)
+      || !MathIsValidNumber(InpLotStepMoney)
+      || InpLotIncrement <= 0.0
+      || InpLotStepMoney <= 0.0)
+     {
+      Alert("Hedge 1.0: Lot Increment และ Lot Step Money ต้องเป็นตัวเลขมากกว่า 0");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   if(InpMaxLotStep < 0)
+     {
+      Alert("Hedge 1.0: Max Lot Step ต้องไม่ติดลบ");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   //--- ทุนเริ่มต้น 0 อนุญาตสำหรับทดสอบทุนหมดและ REFILL
+   if(!MathIsValidNumber(InpInitialCapital)
+      || InpInitialCapital < 0.0)
+     {
+      Alert("Hedge 1.0: Initial Capital ต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป");
+      return(INIT_PARAMETERS_INCORRECT);
+     }
+
+   if(!MathIsValidNumber(InpRefillAmount)
+      || InpRefillAmount <= 0.0)
+     {
+      Alert("Hedge 1.0: Refill Amount ต้องเป็นตัวเลขมากกว่า 0");
+      return(INIT_PARAMETERS_INCORRECT);
      }
 
    //--- ตรวจ Trailing State Key ก่อนเริ่ม Engine
    if(!ProtectInit())
+      return(INIT_FAILED);
+
+   //--- ตรวจ REFILL / Report / Cycle State และนำเข้าหากอนุญาต
+   if(!HedgeStateInit())
       return(INIT_FAILED);
 
    //--- สตาร์ทแต่ละโมดูล
@@ -91,10 +196,26 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
   {
-   ProtectOnTick();   // 1) Cut Loss, Break-even, RR, Trailing TP (ทำตลอด แม้ Session บล็อก)
-   EngineOnTick();    // 2) เปิดรอบใหม่ / เปิดฝั่งที่โดนปิด (เช็ค Session/ทุน/Timeout/สเปรด)
-   ReportOnTick();    // 3) ตรวจครบ 5 วัน + Basket ว่าง = สร้าง CSV
-   PanelUpdate();     // 4) รีเฟรชข้อมูลบนจอ
+   //--- 1) บริหาร Position เดิมก่อนเสมอ
+   ProtectOnTick();
+
+   //--- เริ่มนับ Timeout เมื่อพบ Basket ว่าง
+   //--- ไม่รอให้ Report เสร็จก่อนเริ่มจับเวลาว่าง
+   if(CountSide(POSITION_TYPE_BUY)
+      + CountSide(POSITION_TYPE_SELL) == 0)
+     {
+      if(g_emptySince == 0)
+         g_emptySince = TimeCurrent();
+     }
+
+   //--- 2) ให้ Report ตรวจช่วง Basket ว่างก่อนเปิดรอบใหม่
+   ReportOnTick();
+
+   //--- 3) เปิดได้เมื่อผ่าน Report/ทุน/Session/Timeout/Spread
+   EngineOnTick();
+
+   //--- 4) แสดงสถานะหลังจัดการรอบนี้
+   PanelUpdate();
   }
 
 //+------------------------------------------------------------------+

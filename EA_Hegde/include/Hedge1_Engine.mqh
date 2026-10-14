@@ -14,6 +14,9 @@
 
 bool     g_engineReady = false;
 
+//--- true = ต้องจัดการ Report ที่ค้างก่อนเปิด Basket ใหม่
+bool     g_reportBlocksEntry = false;
+
 datetime g_emptySince       = 0;  // เวลาที่ Basket ของ EA ว่างล่าสุด
 datetime g_lastOpenFail     = 0;  // เวลาที่เปิดคู่ Hedge ล้มเหลวล่าสุด
 
@@ -374,10 +377,87 @@ bool RollbackHedgePair()
 //| เปิดคู่ Hedge (Buy + Sell) แบบ Mirror-and-Verify                  |
 //| ส่งสองฝั่งติดกัน -> ตรวจ Position จริง -> Rollback หากไม่สมมาตร   |
 //+------------------------------------------------------------------+
+bool BeginBasketCycle()
+  {
+   double baseline = 0.0;
+
+   if(!TryGetClosedNet(baseline))
+     {
+      Print("Hedge1: CYCLE START BLOCKED",
+            " | Closed history unavailable");
+      return(false);
+     }
+
+   datetime startedAt = TimeCurrent();
+
+   if(startedAt <= 0)
+     {
+      Print("Hedge1: CYCLE START BLOCKED",
+            " | Server time unavailable");
+      return(false);
+     }
+
+   string netName = HedgeStateGVName("RNET");
+   string startName = HedgeStateGVName("CSTART");
+
+   if(StringLen(netName) > 63 || StringLen(startName) > 63)
+     {
+      Print("Hedge1: CYCLE START BLOCKED",
+            " | State key too long");
+      return(false);
+     }
+
+   //--- ทำเครื่องหมายว่า State ยังไม่พร้อมก่อนเขียนฐานใหม่
+   ResetLastError();
+
+   if(GlobalVariableSet(startName, 0.0) == 0)
+     {
+      Print("Hedge1: CYCLE START FAILED",
+            " | Invalidate state error=", GetLastError());
+      return(false);
+     }
+
+   GlobalVariablesFlush();
+
+   ResetLastError();
+
+   if(GlobalVariableSet(netName, baseline) == 0)
+     {
+      Print("Hedge1: CYCLE START FAILED",
+            " | Save baseline error=", GetLastError());
+      return(false);
+     }
+
+   ResetLastError();
+
+   if(GlobalVariableSet(startName, (double)startedAt) == 0)
+     {
+      Print("Hedge1: CYCLE START FAILED",
+            " | Save start time error=", GetLastError());
+      return(false);
+     }
+
+   GlobalVariablesFlush();
+
+   Print("Hedge1: CYCLE START",
+         " | Baseline=", DoubleToString(baseline, 2),
+         " | Time=",
+         TimeToString(startedAt, TIME_DATE | TIME_SECONDS));
+
+   return(true);
+  }
+
 bool OpenHedgePair()
   {
    if(!g_engineReady)
       return(false);
+
+   if(g_reportBlocksEntry)
+     {
+      Print("Hedge1: HEDGE ENTRY BLOCKED",
+            " | WAIT_REPORT");
+      return(false);
+     }
 
    //--- One Basket Only: ห้ามเปิด Hedge ใหม่ ถ้ายังมี Position ของ EA ค้างอยู่
    int existingBuy  = CountSide(POSITION_TYPE_BUY);
@@ -391,7 +471,37 @@ bool OpenHedgePair()
       return(false);
      }
 
-   double lot = GetEffectiveLot();
+   double equity = 0.0;
+
+   if(!TryGetVirtualEquity(equity))
+     {
+      Print("Hedge1: HEDGE ENTRY BLOCKED",
+            " | CAPITAL_UNAVAILABLE");
+      return(false);
+     }
+
+   if(equity <= 0.0)
+     {
+      Print("Hedge1: HEDGE ENTRY BLOCKED",
+            " | CAPITAL_DEAD",
+            " | Equity=", DoubleToString(equity, 2));
+      return(false);
+     }
+
+   //--- ใช้ทุนที่ตรวจผ่านแล้ว ไม่อ่านทุนซ้ำในสูตร Lot
+   double lot = GetEffectiveLotForEquity(equity);
+
+   if(!MathIsValidNumber(lot) || lot <= 0.0)
+     {
+      Print("Hedge1: HEDGE ENTRY BLOCKED",
+            " | INVALID_LOT",
+            " | Equity=", DoubleToString(equity, 2));
+      return(false);
+     }
+
+   //--- บันทึกฐาน Cycle ก่อนส่ง Order แรก
+   if(!BeginBasketCycle())
+      return(false);
 
    //--- เปิด Buy และ Sell รอบแรก
    OpenOneOrder(POSITION_TYPE_BUY,  lot, "HEDGE");
@@ -461,7 +571,15 @@ bool OpenHedgePair()
 //+------------------------------------------------------------------+
 bool CanOpenAuto(datetime sinceTime, string &reason)
   {
-   if(IsCapitalDead())
+   if(g_reportBlocksEntry)
+     { reason = "WAIT_REPORT"; return(false); }
+
+   double equity = 0.0;
+
+   if(!TryGetVirtualEquity(equity))
+     { reason = "CAPITAL_UNAVAILABLE"; return(false); }
+
+   if(equity <= 0.0)
      { reason = "CAPITAL_DEAD"; return(false); }
    if(IsAutoBlockedBySession())
      { reason = "SESSION_BLOCK"; return(false); }

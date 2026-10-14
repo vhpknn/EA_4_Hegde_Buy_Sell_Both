@@ -348,33 +348,44 @@ double GetFloatingPL()
 //+------------------------------------------------------------------+
 //| Cycle Loss: ขาดทุนปิดแล้วในรอบ Basket ปัจจุบัน                   |
 //+------------------------------------------------------------------+
-double GetCycleLoss()
+bool TryGetCycleLoss(double &loss)
   {
-   int total = CountSide(POSITION_TYPE_BUY) + CountSide(POSITION_TYPE_SELL);
+   loss = 0.0;
 
-   string gvTotal = "HEDGE1_" + IntegerToString(InpMagicNumber) + "_RTOT";
-   string gvNet   = "HEDGE1_" + IntegerToString(InpMagicNumber) + "_RNET";
+   string netName = HedgeStateGVName("RNET");
+   string startName = HedgeStateGVName("CSTART");
 
-   int previousTotal = 0;
-   if(GlobalVariableCheck(gvTotal))
-      previousTotal = (int)GlobalVariableGet(gvTotal);
+   double baseline = 0.0;
+   double startedAt = 0.0;
 
-   //--- จาก Basket ว่าง -> มีไม้ = เริ่ม Cycle ใหม่
-   if(previousTotal == 0 && total > 0)
-      GlobalVariableSet(gvNet, GetClosedNet());
+   //--- ไม่มีข้อมูลเริ่ม Cycle ที่ยืนยันได้ ให้แสดง N/A
+   if(!GlobalVariableCheck(netName)
+      || !GlobalVariableCheck(startName))
+      return(false);
 
-   GlobalVariableSet(gvTotal, total);
+   if(!GlobalVariableGet(startName, startedAt)
+      || !MathIsValidNumber(startedAt)
+      || startedAt <= 0.0)
+      return(false);
 
-   if(!GlobalVariableCheck(gvNet))
-      return(0.0);
+   if(!GlobalVariableGet(netName, baseline)
+      || !MathIsValidNumber(baseline))
+      return(false);
 
-   double cycleNet = GetClosedNet() - GlobalVariableGet(gvNet);
+   double closedNet = 0.0;
 
-   //--- แสดงเฉพาะขาดทุน ถ้ากำไรให้แสดง 0
-   if(cycleNet < 0.0)
-      return(cycleNet);
+   if(!TryGetClosedNet(closedNet))
+      return(false);
 
-   return(0.0);
+   double cycleNet = closedNet - baseline;
+
+   if(!MathIsValidNumber(cycleNet))
+      return(false);
+
+   //--- แสดงเฉพาะผลขาดทุนที่บันทึกเป็นดีลแล้ว
+   loss = MathMin(cycleNet, 0.0);
+
+   return(true);
   }
 
 //+------------------------------------------------------------------+
@@ -682,15 +693,14 @@ void PanelUpdate()
    PanelSet("N_TIME", "Refill Timer:", timerStatusColor);
    PanelSet("V_TIME", timerText, timerStatusColor);
 
-   //--- LOT & CAPITAL
-   double equity = GetVirtualEquity();
+   //--- LOT & CAPITAL: ไม่แสดง Error เป็นยอดเงิน 0
+   double equity = 0.0;
+   bool equityKnown = TryGetVirtualEquity(equity);
 
-   int steps = 1;
-   if(InpLotStepMoney > 0.0)
-      steps = (int)MathFloor(equity / InpLotStepMoney);
+   double steps = 1.0;
 
-   if(steps < 1)
-      steps = 1;
+   if(equityKnown && InpLotStepMoney > 0.0)
+      steps = MathMax(1.0, MathFloor(equity / InpLotStepMoney));
 
    PanelSet("V_BASE", DoubleToString(InpBaseLot, 2), COL_TEXT);
 
@@ -699,36 +709,66 @@ void PanelUpdate()
             + " / $"
             + DoubleToString(InpLotStepMoney, 0)
             + " (step "
-            + IntegerToString(steps)
+            + (equityKnown ? DoubleToString(steps, 0) : "N/A")
             + ")",
-            COL_TEXT);
+            equityKnown ? COL_TEXT : COL_DIM);
 
-   //--- Effective Lot = Cyan เด่น
-   PanelSet("V_LOT", DoubleToString(GetEffectiveLot(), 2), COL_CYAN);
+   if(equityKnown)
+     {
+      double effectiveLot = GetEffectiveLotForEquity(equity);
 
-   //--- Virtual Equity = เขียวสด
-   //--- Virtual Equity: บวกเขียว / ลบแดง / ศูนย์ขาว
-   color equityColor = PanelSignColor(equity);
+      if(equity > 0.0 && effectiveLot <= 0.0)
+         PanelSet("V_LOT", "INVALID", COL_WARN);
+      else
+         PanelSet("V_LOT",
+                  DoubleToString(effectiveLot, 3),
+                  COL_CYAN);
 
-   PanelSet("N_EQ", "Virtual Equity:", equityColor);
-   PanelSet("V_EQ", "$" + DoubleToString(equity, 2), equityColor);
+      color equityColor = PanelSignColor(equity);
 
-   //--- Closed Net = เขียวเมื่อกำไร / แดงเมื่อขาดทุน
-   double closedNet = GetClosedNet();
+      PanelSet("N_EQ", "Virtual Equity:", equityColor);
+      PanelSet("V_EQ",
+               "$" + DoubleToString(equity, 2),
+               equityColor);
+     }
+   else
+     {
+      PanelSet("V_LOT", "N/A", COL_DIM);
+      PanelSet("N_EQ", "Virtual Equity:", COL_DIM);
+      PanelSet("V_EQ", "N/A", COL_DIM);
+     }
 
-   //--- Closed Net เขียวเมื่อกำไร / แดงเมื่อขาดทุน ทั้งชื่อและตัวเลข
-   color closedNetColor = (closedNet >= 0.0) ? COL_PROFIT : COL_WARN;
+   double closedNet = 0.0;
+   bool closedKnown = TryGetClosedNet(closedNet);
 
-   PanelSet("N_NET", "Closed Net:", closedNetColor);
-   PanelSet("V_NET", FormatMoney(closedNet), closedNetColor);
+   if(closedKnown)
+     {
+      color closedNetColor =
+         (closedNet >= 0.0) ? COL_PROFIT : COL_WARN;
 
-   //--- Cycle Loss = แดงเมื่อขาดทุน
-   double cycleLoss = GetCycleLoss();
+      PanelSet("N_NET", "Closed Net:", closedNetColor);
+      PanelSet("V_NET", FormatMoney(closedNet), closedNetColor);
+     }
+   else
+     {
+      PanelSet("N_NET", "Closed Net:", COL_DIM);
+      PanelSet("V_NET", "N/A", COL_DIM);
+     }
 
-   //--- Cycle Loss: ลบแดง / 0 ขาว
-   PanelSet("V_CYC",
-            FormatMoney(cycleLoss),
-            PanelSignColor(cycleLoss));
+   //--- Cycle Loss: อ่านจากฐานที่ Engine บันทึกก่อนเปิด Order
+   double cycleLoss = 0.0;
+   bool cycleKnown = TryGetCycleLoss(cycleLoss);
+
+   if(cycleKnown)
+     {
+      PanelSet("V_CYC",
+               FormatMoney(cycleLoss),
+               PanelSignColor(cycleLoss));
+     }
+   else
+     {
+      PanelSet("V_CYC", "N/A", COL_DIM);
+     }
 
    //--- POSITIONS
    double floatingPL = GetFloatingPL();
@@ -806,12 +846,23 @@ void PanelOnChartEvent(int id,
 
    else if(sparam == PName("B_REFILL"))
      {
-      AddRefill();
+      if(AddRefill())
+        {
+         double equity = 0.0;
 
-      Print("Hedge1: REFILL +$",
-            DoubleToString(InpRefillAmount, 2),
-            " | Virtual Equity=$",
-            DoubleToString(GetVirtualEquity(), 2));
+         if(TryGetVirtualEquity(equity))
+            Print("Hedge1: REFILL SAVED +$",
+                  DoubleToString(InpRefillAmount, 2),
+                  " | Virtual Equity=$",
+                  DoubleToString(equity, 2));
+         else
+            Print("Hedge1: REFILL SAVED +$",
+                  DoubleToString(InpRefillAmount, 2),
+                  " | Virtual Equity=N/A");
+        }
+      else
+         Print("Hedge1: REFILL NOT SAVED",
+               " | ตรวจ Experts Log ก่อนกดซ้ำ");
      }
 
    else if(sparam == PName("MIN"))

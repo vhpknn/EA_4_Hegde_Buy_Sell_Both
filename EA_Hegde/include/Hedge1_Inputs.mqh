@@ -62,5 +62,6 @@ input long   InpMagicNumber     = 998874;                  // รหัสปร
 input string InpTradeComment    = "Hedge 1.0 [1000 RR 1:2]";// คอมเมนต์ประจำตัว (แสดงบน Panel)
 input bool   InpEnableReport    = true;   // สรุปรายงานกำไรขาดทุนเป็นไฟล์ CSV
 input int    InpReportDays      = 5;      // สร้าง CSV ทุกกี่วัน (เมื่อ Basket ว่าง)
+input bool   InpStateImportLegacy = false; // นำเข้า REFILL/Report/Cycle State เก่า เฉพาะบัญชีเดิมและ Basket ว่าง
 
 #endif // HEDGE1_INPUTS_MQH

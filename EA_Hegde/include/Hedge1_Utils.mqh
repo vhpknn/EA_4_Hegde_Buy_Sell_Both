@@ -8,6 +8,130 @@
 
 #include "Hedge1_Inputs.mqh"
 
+//--- State เงิน/รายงานไม่ผูก Point Digits เพราะไม่ได้เก็บระยะราคา
+string HedgeStateGVName(string suffix)
+  {
+   return("H1S_"
+          + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN))
+          + "_"
+          + _Symbol
+          + "_"
+          + IntegerToString(InpMagicNumber)
+          + "_"
+          + suffix);
+  }
+
+bool HedgeStateInit()
+  {
+   string suffixes[] = {"REFILL", "RPD", "RNET"};
+
+   //--- ตรวจความยาวทุก Key ก่อนเริ่มระบบ
+   for(int i = 0; i < ArraySize(suffixes); i++)
+     {
+      string name = HedgeStateGVName(suffixes[i]);
+
+      if(StringLen(name) > 63)
+        {
+         Alert("Hedge1: State Key ยาวเกิน 63 ตัวอักษร: ", name);
+         return(false);
+        }
+     }
+
+   //--- การนำเข้า State เก่าอนุญาตเฉพาะ Basket ของ EA ว่าง
+   if(InpStateImportLegacy)
+     {
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+        {
+         ulong ticket = PositionGetTicket(i);
+
+         if(ticket == 0)
+            continue;
+
+         if(PositionGetString(POSITION_SYMBOL) == _Symbol
+            && PositionGetInteger(POSITION_MAGIC) == InpMagicNumber)
+           {
+            Alert("Hedge1: Legacy State Import ต้องทำเมื่อ Basket ว่าง");
+            return(false);
+           }
+        }
+     }
+
+   bool copiedAny = false;
+
+   for(int i = 0; i < ArraySize(suffixes); i++)
+     {
+      string newName = HedgeStateGVName(suffixes[i]);
+      string sourceName = newName;
+      bool importing = false;
+
+      if(!GlobalVariableCheck(newName))
+        {
+         if(!InpStateImportLegacy)
+            continue;
+
+         sourceName = "HEDGE1_"
+                      + IntegerToString(InpMagicNumber)
+                      + "_"
+                      + suffixes[i];
+
+         if(!GlobalVariableCheck(sourceName))
+            continue;
+
+         importing = true;
+        }
+
+      double value = 0.0;
+
+      if(!GlobalVariableGet(sourceName, value)
+         || !MathIsValidNumber(value))
+        {
+         Alert("Hedge1: อ่าน State ไม่สำเร็จหรือค่าไม่ถูกต้อง: ",
+               sourceName);
+         return(false);
+        }
+
+      //--- REFILL ต้องไม่ติดลบ
+      if(suffixes[i] == "REFILL" && value < 0.0)
+        {
+         Alert("Hedge1: REFILL State ต้องไม่ติดลบ");
+         return(false);
+        }
+
+      //--- วันเริ่มรอบรายงานต้องมากกว่า 0
+      if(suffixes[i] == "RPD" && value <= 0.0)
+        {
+         Alert("Hedge1: Report State ไม่ถูกต้อง");
+         return(false);
+        }
+
+      //--- RNET เป็นยอดสุทธิ จึงติดลบได้
+      //--- ฐาน Cycle ใหม่ถูกกำหนดโดย Engine ก่อนส่ง Order
+      if(!importing)
+         continue;
+
+      ResetLastError();
+
+      if(GlobalVariableSet(newName, value) == 0)
+        {
+         Alert("Hedge1: นำเข้า State ไม่สำเร็จ: ",
+               newName, " error=", GetLastError());
+         return(false);
+        }
+
+      copiedAny = true;
+
+      Print("Hedge1: Migrate State ", suffixes[i],
+            " | Account=", AccountInfoInteger(ACCOUNT_LOGIN),
+            " | Symbol=", _Symbol,
+            " | Value=", DoubleToString(value, 2));
+     }
+
+   if(copiedAny)
+      GlobalVariablesFlush();
+
+   return(true);
+  }
+
 //+------------------------------------------------------------------+
 //| ขนาด 1 Point ตามทศนิยมที่ผู้ใช้กำหนด (InpPointDigits)             |
 //| เช่น ตั้ง 2 ตำแหน่ง = 1 Point เท่ากับ 0.01 (ราคาทอง)             |
