@@ -366,6 +366,14 @@ bool RollbackHedgePair()
    int remainingBuy  = CountSide(POSITION_TYPE_BUY);
    int remainingSell = CountSide(POSITION_TYPE_SELL);
 
+   //--- การปิดในรอบสุดท้ายอาจทำให้ Basket ว่างแล้ว
+   if(remainingBuy == 0 && remainingSell == 0)
+     {
+      Print("Hedge1: HEDGE ROLLBACK สำเร็จหลังรอบสุดท้าย",
+            " | Basket ว่าง");
+      return(true);
+     }
+
    Print("Hedge1: CRITICAL - HEDGE ROLLBACK ปิดไม่หมด",
          " | Buy=", remainingBuy,
          " Sell=", remainingSell);

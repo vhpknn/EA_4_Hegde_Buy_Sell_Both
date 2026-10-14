@@ -521,7 +521,9 @@ void ProtectOnTick()
             cutSLImproves = (exactCutSL < sl);
         }
 
-      if(beforeBreakEven && cutSLDifferent && cutSLImproves)
+      if((sl == 0.0 || beforeBreakEven)
+         && cutSLDifferent
+         && cutSLImproves)
         {
          if(ModifySL(ticket, exactCutSL, tp, "CUTLOSS-SL"))
             sl = exactCutSL;

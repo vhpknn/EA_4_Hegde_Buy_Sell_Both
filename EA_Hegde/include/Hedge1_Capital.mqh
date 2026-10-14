@@ -45,16 +45,48 @@ bool TryGetClosedNet(double &net)
          return(false);
         }
 
-      if(HistoryDealGetInteger(ticket, DEAL_MAGIC)
-         != InpMagicNumber)
+      long magic = 0;
+      string symbol = "";
+
+      if(!HistoryDealGetInteger(ticket, DEAL_MAGIC, magic)
+         || !HistoryDealGetString(ticket, DEAL_SYMBOL, symbol))
+        {
+         Print("Hedge1: อ่าน Closed Deal Identity ไม่สำเร็จ",
+               " | Deal=", ticket,
+               " | error=", GetLastError());
+         net = 0.0;
+         return(false);
+        }
+
+      if(magic != InpMagicNumber || symbol != _Symbol)
          continue;
 
-      if(HistoryDealGetString(ticket, DEAL_SYMBOL) != _Symbol)
-         continue;
+      double profit = 0.0;
+      double swap = 0.0;
+      double commission = 0.0;
 
-      net += HistoryDealGetDouble(ticket, DEAL_PROFIT)
-           + HistoryDealGetDouble(ticket, DEAL_SWAP)
-           + HistoryDealGetDouble(ticket, DEAL_COMMISSION);
+      if(!HistoryDealGetDouble(ticket, DEAL_PROFIT, profit)
+         || !HistoryDealGetDouble(ticket, DEAL_SWAP, swap)
+         || !HistoryDealGetDouble(ticket, DEAL_COMMISSION, commission))
+        {
+         Print("Hedge1: อ่าน Closed Deal Values ไม่สำเร็จ",
+               " | Deal=", ticket,
+               " | error=", GetLastError());
+         net = 0.0;
+         return(false);
+        }
+
+      if(!MathIsValidNumber(profit)
+         || !MathIsValidNumber(swap)
+         || !MathIsValidNumber(commission))
+        {
+         Print("Hedge1: Closed Deal Values ไม่ถูกต้อง",
+               " | Deal=", ticket);
+         net = 0.0;
+         return(false);
+        }
+
+      net += profit + swap + commission;
      }
 
    if(!MathIsValidNumber(net))
