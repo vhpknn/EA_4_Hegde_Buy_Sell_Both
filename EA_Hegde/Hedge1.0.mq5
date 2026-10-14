@@ -59,6 +59,10 @@ int OnInit()
       return(INIT_FAILED);
      }
 
+   //--- ตรวจ Trailing State Key ก่อนเริ่ม Engine
+   if(!ProtectInit())
+      return(INIT_FAILED);
+
    //--- สตาร์ทแต่ละโมดูล
    EngineInit();    // ตั้งค่าการส่งออเดอร์ (Magic/Deviation/Filling)
    ReportInit();    // เริ่มนับรอบรายงาน CSV
@@ -75,6 +79,9 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
   {
+   //--- คง State ของ Position ที่ยังเปิดไว้
+   GlobalVariablesFlush();
+
    PanelDeinit();   // ลบวัตถุ Panel ออกจากกราฟ
    Print("Hedge1: ปิดระบบแล้ว (เหตุผล ", reason, ")");
   }

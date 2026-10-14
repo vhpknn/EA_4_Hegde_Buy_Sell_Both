@@ -545,16 +545,30 @@ void PanelBuild()
    PanelLabel("N_CUT", "Cut Loss Limit:",  nameX,  py + 294, COL_DIM, labelFont);
    PanelLabel("V_CUT", "-",                valueX, py + 294, COL_TEXT, labelFont);
 
-   //--- ปุ่มฝั่งขวา
+   //--- ปุ่มเปิดไม้เดี่ยวถูกล็อกใน Strict Basket Mode
    PanelButton("B_BUY",
-               "BUY",
+               "BUY LOCKED",
                btnX, py + 51, btnW, 26,
-               COL_BUY, COL_BUY, buttonFont);
+               COL_GRAY, COL_BORDER, buttonFont);
 
    PanelButton("B_SELL",
-               "SELL",
+               "SELL LOCKED",
                btnX, py + 83, btnW, 26,
-               COL_SELL, COL_SELL, buttonFont);
+               COL_GRAY, COL_BORDER, buttonFont);
+
+   ObjectSetInteger(0, PName("B_BUY"),
+                    OBJPROP_COLOR, COL_DIM);
+
+   ObjectSetInteger(0, PName("B_SELL"),
+                    OBJPROP_COLOR, COL_DIM);
+
+   ObjectSetString(0, PName("B_BUY"),
+                   OBJPROP_TOOLTIP,
+                   "Strict Basket: single BUY blocked. Use HEDGE OPEN (B+S).");
+
+   ObjectSetString(0, PName("B_SELL"),
+                   OBJPROP_TOOLTIP,
+                   "Strict Basket: single SELL blocked. Use HEDGE OPEN (B+S).");
 
    //--- CLOSE BUY: กรอบน้ำเงินหนา 3 px + พื้นน้ำเงินเข้ม
    PanelFrame("F_CLBUY",

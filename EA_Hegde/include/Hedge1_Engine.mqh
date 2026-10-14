@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                              Hedge1_Engine.mqh   |
-//| เครื่องจักร: เปิด Hedge, Timeout, สเปรด, เปิดฝั่งที่หาย,         |
-//| ปิดไม้, ปุ่ม Manual, Mirror-and-Verify (สมมาตรสองฝั่ง 100%)      |
+//| เครื่องจักร: เปิดคู่ Hedge, Timeout, สเปรด, One Basket Only     |
+//| ปิดไม้, Strict Manual Entry, Mirror-and-Verify ตอนเปิดคู่        |
 //| ใช้ OrderSend ตรงทั้งหมด ไม่พึ่งไลบรารี CTrade (ใช้ได้ทุก MT5)   |
 //+------------------------------------------------------------------+
 #ifndef HEDGE1_ENGINE_MQH
@@ -14,10 +14,8 @@
 
 bool     g_engineReady = false;
 
-datetime g_emptySince       = 0;  // เวลาที่พอร์ตว่างล่าสุด (นับ Timeout รอบใหม่)
-datetime g_buyMissingSince  = 0;  // เวลาที่ฝั่ง Buy หายไป (รอเปิดคืนตาม Timeout)
-datetime g_sellMissingSince = 0;  // เวลาที่ฝั่ง Sell หายไป
-datetime g_lastOpenFail     = 0;  // เวลาที่เปิดไม้ล้มเหลวล่าสุด (พักกันลูปรัว)
+datetime g_emptySince       = 0;  // เวลาที่ Basket ของ EA ว่างล่าสุด
+datetime g_lastOpenFail     = 0;  // เวลาที่เปิดคู่ Hedge ล้มเหลวล่าสุด
 
 string   g_gateReason = "INIT";   // เหตุผลล่าสุดที่ยังไม่เปิดรอบใหม่ (แสดงบน Panel)
 
@@ -428,9 +426,7 @@ bool OpenHedgePair()
    //--- ตรวจ Position จริง ไม่ใช้แค่ผลลัพธ์จาก OrderSend
    if(IsExactHedgePair(lot))
      {
-      g_emptySince       = 0;
-      g_buyMissingSince  = 0;
-      g_sellMissingSince = 0;
+      g_emptySince = 0;
 
       Print("Hedge1: เปิดคู่ Hedge สำเร็จจริง",
             " | Buy=", CountSide(POSITION_TYPE_BUY),
@@ -510,40 +506,8 @@ void TryOpenNewRound()
       g_lastOpenFail = TimeCurrent();
   }
 
-//+------------------------------------------------------------------+
-//| พยายามเปิดคืนฝั่งที่โดนปิด (เช่น Sell โดน Cut Loss)               |
-//+------------------------------------------------------------------+
-void TryReopenMissingSide(int buys, int sells)
-  {
-   if(!InpReopenClosedSide)
-     { g_gateReason = "SIDE_REOPEN_OFF"; return; }
-
-   if(buys > 0 && sells > 0)
-     { g_gateReason = "RUNNING"; return; }   // ครบสองฝั่งแล้ว ทำงานปกติ
-
-   if(g_lastOpenFail > 0 && TimeCurrent() - g_lastOpenFail < HEDGE_FAIL_COOLDOWN)
-     { g_gateReason = "COOLDOWN"; return; }
-
-   ENUM_POSITION_TYPE missing = POSITION_TYPE_BUY;
-   datetime since = 0;
-   if(buys == 0)
-     { missing = POSITION_TYPE_BUY;  since = g_buyMissingSince; }
-   else
-     { missing = POSITION_TYPE_SELL; since = g_sellMissingSince; }
-
-   string reason = "";
-   if(!CanOpenAuto(since, reason))
-     { g_gateReason = reason; return; }
-
-   double lot = GetEffectiveLot();
-   if(OpenOneOrder(missing, lot, "REOPEN"))
-     {
-      g_lastOpenFail = 0;
-      g_gateReason  = "RUNNING";
-     }
-   else
-      g_lastOpenFail = TimeCurrent();
-  }
+//--- Strict One Basket: ไม่มีระบบเปิดคืนขาที่หาย
+//--- การเปิดรอบใหม่ทำผ่าน TryOpenNewRound() เมื่อ Basket ว่างเท่านั้น
 
 //+------------------------------------------------------------------+
 //| หัวใจหลักของ Engine เรียกทุก Tick (หลัง Protect ทำงานเสร็จ)        |
@@ -558,20 +522,17 @@ void EngineOnTick()
 
    if(buys + sells == 0)
      {
-      g_buyMissingSince  = 0;
-      g_sellMissingSince = 0;
+      //--- เริ่มนับ Timeout เมื่อ Basket ว่าง
       if(g_emptySince == 0)
          g_emptySince = TimeCurrent();
+
       TryOpenNewRound();
      }
    else
      {
-      //--- กฎ 1 Basket เท่านั้น:
-      //--- เมื่อยังเหลือ Buy หรือ Sell อย่างน้อย 1 ไม้ ถือว่า Basket ยังไม่ว่าง
-      //--- ห้าม Reopen ฝั่งที่หาย และห้ามเปิด Hedge ชุดใหม่เด็ดขาด
-      g_emptySince       = 0;
-      g_buyMissingSince  = 0;
-      g_sellMissingSince = 0;
+      //--- มี Position ค้างอย่างน้อยหนึ่งไม้ = Basket ยังไม่ว่าง
+      //--- ไม่เปิดขาที่หาย และไม่เปิดคู่ Hedge เพิ่ม
+      g_emptySince = 0;
 
       if(buys > 0 && sells > 0)
          g_gateReason = "BASKET_RUNNING";
@@ -581,13 +542,38 @@ void EngineOnTick()
   }
 
 //+------------------------------------------------------------------+
-//| ปุ่ม Manual ทั้งหมด (กดได้เสมอ ไม่ถูก Session/Timeout บล็อก)     |
+//| Strict Manual Entry: ห้ามเปิด BUY / SELL เดี่ยว                    |
+//| HEDGE เปิดได้เฉพาะ Basket ว่าง ตามกฎ OpenHedgePair()               |
+//| คำสั่งปิดยังใช้ได้ ไม่ถูก Session/Timeout บล็อก                   |
 //+------------------------------------------------------------------+
-bool ManualBuy()        { return(OpenOneOrder(POSITION_TYPE_BUY,  GetEffectiveLot(), "MANUAL")); }
-bool ManualSell()       { return(OpenOneOrder(POSITION_TYPE_SELL, GetEffectiveLot(), "MANUAL")); }
-bool ManualHedge()      { return(OpenHedgePair()); }
-bool ManualCloseBuy()  { return(CloseOneSide(POSITION_TYPE_BUY,   "CLOSE-BUY")   > 0); }
-bool ManualCloseSell() { return(CloseOneSide(POSITION_TYPE_SELL, "CLOSE-SELL")  > 0); }
+bool ManualBuy()
+  {
+   Print("Hedge1: STRICT_BASKET BLOCKED MANUAL BUY",
+         " | Use HEDGE OPEN (B+S)");
+   return(false);
+  }
+
+bool ManualSell()
+  {
+   Print("Hedge1: STRICT_BASKET BLOCKED MANUAL SELL",
+         " | Use HEDGE OPEN (B+S)");
+   return(false);
+  }
+
+bool ManualHedge()
+  {
+   return(OpenHedgePair());
+  }
+
+bool ManualCloseBuy()
+  {
+   return(CloseOneSide(POSITION_TYPE_BUY, "CLOSE-BUY") > 0);
+  }
+
+bool ManualCloseSell()
+  {
+   return(CloseOneSide(POSITION_TYPE_SELL, "CLOSE-SELL") > 0);
+  }
 bool ManualCloseAll()
   {
    int c = CloseOneSide(POSITION_TYPE_BUY,  "CLOSE-ALL")
@@ -600,20 +586,15 @@ bool ManualCloseAll()
 //+------------------------------------------------------------------+
 int GetTimeoutRemaining()
   {
-   if(!InpUseTimeout)
+   if(!InpUseTimeout || g_emptySince == 0)
       return(0);
-   datetime since = 0;
-   if(g_emptySince > 0)
-      since = g_emptySince;
-   else if(g_buyMissingSince > 0)
-      since = g_buyMissingSince;
-   else if(g_sellMissingSince > 0)
-      since = g_sellMissingSince;
-   if(since == 0)
-      return(0);
-   int remain = InpTimeoutSeconds - (int)(TimeCurrent() - since);
+
+   int remain = InpTimeoutSeconds
+                - (int)(TimeCurrent() - g_emptySince);
+
    if(remain < 0)
       remain = 0;
+
    return(remain);
   }
 

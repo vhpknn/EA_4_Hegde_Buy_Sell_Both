@@ -26,8 +26,7 @@ input int    InpMaxLotStep      = 4;      // Lot สูงสุดที่อ�
 
 //====================== 2. Tactical Hedging & Auto Refill =========
 input group "=== 2. Tactical Hedging & Auto Refill ==="
-input bool   InpReopenOnEmpty   = true;   // เปิดออเดอร์รอบใหม่อัตโนมัติเมื่อ Basket ว่าง
-input bool   InpReopenClosedSide= false;  // ไม่ใช้ในโหมด 1 Basket: ต้องรอ Basket ว่างก่อนจึงเปิดรอบใหม่
+input bool   InpReopenOnEmpty   = true;   // เปิดคู่ Hedge รอบใหม่เมื่อ Basket ว่างเท่านั้น
 input bool   InpUseTimeout      = true;   // ใช้ Timeout บังคับเปิดรอบใหม่
 input int    InpTimeoutSeconds  = 300;    // Timeout บังคับเปิดรอบใหม่ (วินาที)
 input bool   InpUseSpreadCheck  = true;   // ใช้ตรวจสเปรดก่อนเปิด

@@ -16,15 +16,33 @@ bool g_sessionWarned[3] = {false, false, false};
 //+------------------------------------------------------------------+
 int ParseTimeToMinutes(string hhmm)
   {
-   string parts[];
-   if(StringSplit(hhmm, ':', parts) != 2)
+   // Accept only HH:MM, including 24:00.
+   if(StringLen(hhmm) != 5)
       return(-1);
-   int h = (int)StringToInteger(parts[0]);
-   int m = (int)StringToInteger(parts[1]);
+
+   if(StringSubstr(hhmm, 2, 1) != ":")
+      return(-1);
+
+   for(int i = 0; i < 5; i++)
+     {
+      if(i == 2)
+         continue;
+
+      int ch = (int)StringGetCharacter(hhmm, i);
+
+      if(ch < 48 || ch > 57)
+         return(-1);
+     }
+
+   int h = (int)StringToInteger(StringSubstr(hhmm, 0, 2));
+   int m = (int)StringToInteger(StringSubstr(hhmm, 3, 2));
+
    if(h < 0 || h > 24 || m < 0 || m > 59)
       return(-1);
-   if(h == 24 && m != 0)   // อนุญาตให้พิมพ์ 24:00 ได้อย่างเดียว
+
+   if(h == 24 && m != 0)
       return(-1);
+
    return(h * 60 + m);
   }
 
@@ -93,20 +111,35 @@ bool IsAutoBlockedBySession()
    bool isActive = false;
    int s = 0, e = 0;
 
-   if(!GetSessionWindow(0, InpSession1Block, InpSession1Start, InpSession1End, isActive, s, e))
-      return(false);
-   if(isActive && IsInWindow(nowMin, s, e))
-      return(true);
+   if(GetSessionWindow(0,
+                       InpSession1Block,
+                       InpSession1Start,
+                       InpSession1End,
+                       isActive, s, e))
+     {
+      if(isActive && IsInWindow(nowMin, s, e))
+         return(true);
+     }
 
-   if(!GetSessionWindow(1, InpSession2Block, InpSession2Start, InpSession2End, isActive, s, e))
-      return(false);
-   if(isActive && IsInWindow(nowMin, s, e))
-      return(true);
+   if(GetSessionWindow(1,
+                       InpSession2Block,
+                       InpSession2Start,
+                       InpSession2End,
+                       isActive, s, e))
+     {
+      if(isActive && IsInWindow(nowMin, s, e))
+         return(true);
+     }
 
-   if(!GetSessionWindow(2, InpSession3Block, InpSession3Start, InpSession3End, isActive, s, e))
-      return(false);
-   if(isActive && IsInWindow(nowMin, s, e))
-      return(true);
+   if(GetSessionWindow(2,
+                       InpSession3Block,
+                       InpSession3Start,
+                       InpSession3End,
+                       isActive, s, e))
+     {
+      if(isActive && IsInWindow(nowMin, s, e))
+         return(true);
+     }
 
    return(false);
   }
