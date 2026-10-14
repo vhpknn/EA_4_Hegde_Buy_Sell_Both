@@ -1,0 +1,1126 @@
+[
+  {
+    "id": "MAIN-01",
+    "module": "MAIN",
+    "name": "OnInit",
+    "signature": "int OnInit()",
+    "purpose": "ตรวจ Inputs และเริ่มโมดูล",
+    "calls": [
+      "ProtectInit",
+      "HedgeStateInit",
+      "EngineInit",
+      "ReportInit",
+      "PanelInit",
+      "HedgePoint"
+    ],
+    "file": "EA_Hegde/Hedge1.0.mq5"
+  },
+  {
+    "id": "MAIN-02",
+    "module": "MAIN",
+    "name": "OnDeinit",
+    "signature": "void OnDeinit(const int reason)",
+    "purpose": "Flush State และลบ Panel",
+    "calls": [
+      "PanelDeinit"
+    ],
+    "file": "EA_Hegde/Hedge1.0.mq5"
+  },
+  {
+    "id": "MAIN-03",
+    "module": "MAIN",
+    "name": "OnTick",
+    "signature": "void OnTick()",
+    "purpose": "Protect → Report → Engine → Panel",
+    "calls": [
+      "ProtectOnTick",
+      "CountSide",
+      "ReportOnTick",
+      "EngineOnTick",
+      "PanelUpdate"
+    ],
+    "file": "EA_Hegde/Hedge1.0.mq5"
+  },
+  {
+    "id": "MAIN-04",
+    "module": "MAIN",
+    "name": "OnChartEvent",
+    "signature": "void OnChartEvent(const int id, const long &lparam, const double &dparam, const string &sparam)",
+    "purpose": "ส่ง Event ให้ Panel",
+    "calls": [
+      "PanelOnChartEvent"
+    ],
+    "file": "EA_Hegde/Hedge1.0.mq5"
+  },
+  {
+    "id": "UTIL-01",
+    "module": "UTIL",
+    "name": "HedgeStateGVName",
+    "signature": "string HedgeStateGVName(string suffix)",
+    "purpose": "สร้าง Key เงิน/Report/Cycle",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Utils.mqh"
+  },
+  {
+    "id": "UTIL-02",
+    "module": "UTIL",
+    "name": "HedgeStateInit",
+    "signature": "bool HedgeStateInit()",
+    "purpose": "ตรวจ/นำเข้า State ตามสิทธิ์",
+    "calls": [
+      "HedgeStateGVName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Utils.mqh"
+  },
+  {
+    "id": "UTIL-03",
+    "module": "UTIL",
+    "name": "HedgePoint",
+    "signature": "double HedgePoint()",
+    "purpose": "หน่วยราคาตาม Point Digits",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Utils.mqh"
+  },
+  {
+    "id": "UTIL-04",
+    "module": "UTIL",
+    "name": "PointsToPrice",
+    "signature": "double PointsToPrice(double points)",
+    "purpose": "แปลง Points เป็นระยะราคา",
+    "calls": [
+      "HedgePoint"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Utils.mqh"
+  },
+  {
+    "id": "UTIL-05",
+    "module": "UTIL",
+    "name": "PriceToPoints",
+    "signature": "double PriceToPoints(double priceDiff)",
+    "purpose": "แปลงระยะราคาเป็น Points",
+    "calls": [
+      "HedgePoint"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Utils.mqh"
+  },
+  {
+    "id": "UTIL-06",
+    "module": "UTIL",
+    "name": "GetSpreadPoints",
+    "signature": "double GetSpreadPoints()",
+    "purpose": "อ่าน Spread ในหน่วย EA",
+    "calls": [
+      "PriceToPoints"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Utils.mqh"
+  },
+  {
+    "id": "UTIL-07",
+    "module": "UTIL",
+    "name": "FormatMoney",
+    "signature": "string FormatMoney(double v)",
+    "purpose": "จัดข้อความยอดเงิน",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Utils.mqh"
+  },
+  {
+    "id": "UTIL-08",
+    "module": "UTIL",
+    "name": "FormatPoints",
+    "signature": "string FormatPoints(double pts)",
+    "purpose": "จัดข้อความระยะ Points",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Utils.mqh"
+  },
+  {
+    "id": "CAP-01",
+    "module": "CAP",
+    "name": "RefillGVName",
+    "signature": "string RefillGVName()",
+    "purpose": "Key ของยอด REFILL",
+    "calls": [
+      "HedgeStateGVName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-02",
+    "module": "CAP",
+    "name": "TryGetClosedNet",
+    "signature": "bool TryGetClosedNet(double &net)",
+    "purpose": "อ่าน Net พร้อมสถานะสำเร็จ",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-03",
+    "module": "CAP",
+    "name": "GetClosedNet",
+    "signature": "double GetClosedNet()",
+    "purpose": "Wrapper Net; error คืน 0",
+    "calls": [
+      "TryGetClosedNet"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-04",
+    "module": "CAP",
+    "name": "TryGetTotalRefill",
+    "signature": "bool TryGetTotalRefill(double &total)",
+    "purpose": "อ่าน REFILL พร้อมสถานะ",
+    "calls": [
+      "RefillGVName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-05",
+    "module": "CAP",
+    "name": "GetTotalRefill",
+    "signature": "double GetTotalRefill()",
+    "purpose": "Wrapper REFILL; error คืน 0",
+    "calls": [
+      "TryGetTotalRefill"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-06",
+    "module": "CAP",
+    "name": "AddRefill",
+    "signature": "bool AddRefill()",
+    "purpose": "เติมและบันทึกทุนเสมือน",
+    "calls": [
+      "TryGetTotalRefill",
+      "RefillGVName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-07",
+    "module": "CAP",
+    "name": "TryGetVirtualEquity",
+    "signature": "bool TryGetVirtualEquity(double &equity)",
+    "purpose": "อ่านทุนเสมือนพร้อมสถานะ",
+    "calls": [
+      "TryGetTotalRefill",
+      "TryGetClosedNet"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-08",
+    "module": "CAP",
+    "name": "GetVirtualEquity",
+    "signature": "double GetVirtualEquity()",
+    "purpose": "Wrapper Equity; error คืน 0",
+    "calls": [
+      "TryGetVirtualEquity"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-09",
+    "module": "CAP",
+    "name": "NormalizeVolume",
+    "signature": "double NormalizeVolume(double lot)",
+    "purpose": "ตรวจ/ปรับ Volume ตาม Symbol",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-10",
+    "module": "CAP",
+    "name": "GetEffectiveLotForEquity",
+    "signature": "double GetEffectiveLotForEquity(double equity)",
+    "purpose": "คำนวณ Lot จากทุนที่ตรวจแล้ว",
+    "calls": [
+      "NormalizeVolume"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-11",
+    "module": "CAP",
+    "name": "GetEffectiveLot",
+    "signature": "double GetEffectiveLot()",
+    "purpose": "อ่านทุนแล้วคำนวณ Lot",
+    "calls": [
+      "TryGetVirtualEquity",
+      "GetEffectiveLotForEquity"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "CAP-12",
+    "module": "CAP",
+    "name": "IsCapitalDead",
+    "signature": "bool IsCapitalDead()",
+    "purpose": "ทุนหมด/อ่านไม่ได้คืน true",
+    "calls": [
+      "TryGetVirtualEquity"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Capital.mqh"
+  },
+  {
+    "id": "SES-01",
+    "module": "SES",
+    "name": "ParseTimeToMinutes",
+    "signature": "int ParseTimeToMinutes(string hhmm)",
+    "purpose": "ตรวจ HH:MM และแปลงเป็นนาที",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Session.mqh"
+  },
+  {
+    "id": "SES-02",
+    "module": "SES",
+    "name": "CurrentServerMinutes",
+    "signature": "int CurrentServerMinutes()",
+    "purpose": "นาทีปัจจุบันตาม Server",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Session.mqh"
+  },
+  {
+    "id": "SES-03",
+    "module": "SES",
+    "name": "IsInWindow",
+    "signature": "bool IsInWindow(int nowMin, int startMin, int endMin)",
+    "purpose": "ตรวจช่วงปกติ/ข้ามเที่ยงคืน",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Session.mqh"
+  },
+  {
+    "id": "SES-04",
+    "module": "SES",
+    "name": "GetSessionWindow",
+    "signature": "bool GetSessionWindow(int idx, bool enabled, string startStr, string endStr, bool &isActive, int &startMin, int &endMin)",
+    "purpose": "ตรวจหนึ่ง Session; เตือนเวลาผิด",
+    "calls": [
+      "ParseTimeToMinutes"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Session.mqh"
+  },
+  {
+    "id": "SES-05",
+    "module": "SES",
+    "name": "IsAutoBlockedBySession",
+    "signature": "bool IsAutoBlockedBySession()",
+    "purpose": "ตรวจ Session ทั้งสาม",
+    "calls": [
+      "CurrentServerMinutes",
+      "GetSessionWindow",
+      "IsInWindow"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Session.mqh"
+  },
+  {
+    "id": "SES-06",
+    "module": "SES",
+    "name": "GetSessionStatusText",
+    "signature": "string GetSessionStatusText()",
+    "purpose": "ข้อความ OPEN/BLOCK",
+    "calls": [
+      "IsAutoBlockedBySession"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Session.mqh"
+  },
+  {
+    "id": "ENG-01",
+    "module": "ENG",
+    "name": "EngineInit",
+    "signature": "void EngineInit()",
+    "purpose": "ตั้ง Ready และ Log Lot",
+    "calls": [
+      "GetEffectiveLot"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-02",
+    "module": "ENG",
+    "name": "CountSide",
+    "signature": "int CountSide(ENUM_POSITION_TYPE type)",
+    "purpose": "นับ Position ตามฝั่งใน Scope",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-03",
+    "module": "ENG",
+    "name": "OpenOneOrder",
+    "signature": "bool OpenOneOrder(ENUM_POSITION_TYPE dir, double lot, string tag)",
+    "purpose": "ส่ง Order หนึ่งฝั่งพร้อม SL",
+    "calls": [
+      "GetSymbolFilling",
+      "PointsToPrice",
+      "HedgePoint"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-04",
+    "module": "ENG",
+    "name": "GetSymbolFilling",
+    "signature": "ENUM_ORDER_TYPE_FILLING GetSymbolFilling()",
+    "purpose": "เลือก Filling จาก Symbol flags",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-05",
+    "module": "ENG",
+    "name": "IsTradeRetcodeDone",
+    "signature": "bool IsTradeRetcodeDone(uint retcode)",
+    "purpose": "ตรวจ retcode DONE",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-06",
+    "module": "ENG",
+    "name": "RawPositionClose",
+    "signature": "bool RawPositionClose(ulong ticket, string tag)",
+    "purpose": "ส่งปิดด้วย Ticket; ตรวจ retcode",
+    "calls": [
+      "GetSymbolFilling",
+      "IsTradeRetcodeDone"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-07",
+    "module": "ENG",
+    "name": "RawPositionModify",
+    "signature": "bool RawPositionModify(ulong ticket, double newSL, double keepTP, string tag)",
+    "purpose": "ส่ง SLTP; คง TP; ตรวจ retcode",
+    "calls": [
+      "IsTradeRetcodeDone"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-08",
+    "module": "ENG",
+    "name": "CloseOneSide",
+    "signature": "int CloseOneSide(ENUM_POSITION_TYPE dir, string tag)",
+    "purpose": "ปิด Position ฝั่งที่ระบุ",
+    "calls": [
+      "RawPositionClose"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-09",
+    "module": "ENG",
+    "name": "GetSideVolume",
+    "signature": "double GetSideVolume(ENUM_POSITION_TYPE dir)",
+    "purpose": "รวม Volume ของฝั่ง",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-10",
+    "module": "ENG",
+    "name": "IsLotMatched",
+    "signature": "bool IsLotMatched(double actualLot, double expectedLot)",
+    "purpose": "เทียบ Lot ด้วย tolerance",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-11",
+    "module": "ENG",
+    "name": "IsExactHedgePair",
+    "signature": "bool IsExactHedgePair(double expectedLot)",
+    "purpose": "ตรวจ Buy1/Sell1 และ Lot",
+    "calls": [
+      "CountSide",
+      "GetSideVolume",
+      "IsLotMatched"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-12",
+    "module": "ENG",
+    "name": "RollbackHedgePair",
+    "signature": "bool RollbackHedgePair()",
+    "purpose": "ปิดคู่ที่เปิดไม่ครบ/ผิด Volume",
+    "calls": [
+      "CountSide",
+      "CloseOneSide"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-13",
+    "module": "ENG",
+    "name": "BeginBasketCycle",
+    "signature": "bool BeginBasketCycle()",
+    "purpose": "บันทึกฐานก่อน Order แรก",
+    "calls": [
+      "TryGetClosedNet",
+      "HedgeStateGVName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-14",
+    "module": "ENG",
+    "name": "OpenHedgePair",
+    "signature": "bool OpenHedgePair()",
+    "purpose": "Gate → เปิดคู่ → Verify/Rollback",
+    "calls": [
+      "CountSide",
+      "TryGetVirtualEquity",
+      "GetEffectiveLotForEquity",
+      "BeginBasketCycle",
+      "OpenOneOrder",
+      "IsExactHedgePair",
+      "GetSideVolume",
+      "RollbackHedgePair"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-15",
+    "module": "ENG",
+    "name": "CanOpenAuto",
+    "signature": "bool CanOpenAuto(datetime sinceTime, string &reason)",
+    "purpose": "ตรวจ Report/ทุน/Session/เวลา/Spread",
+    "calls": [
+      "TryGetVirtualEquity",
+      "IsAutoBlockedBySession",
+      "GetSpreadPoints"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-16",
+    "module": "ENG",
+    "name": "TryOpenNewRound",
+    "signature": "void TryOpenNewRound()",
+    "purpose": "Auto/Cooldown/Gates ก่อนเปิด",
+    "calls": [
+      "CanOpenAuto",
+      "GetSpreadPoints",
+      "GetEffectiveLot",
+      "OpenHedgePair"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-17",
+    "module": "ENG",
+    "name": "EngineOnTick",
+    "signature": "void EngineOnTick()",
+    "purpose": "เปิดรอบใหม่เฉพาะ Basket ว่าง",
+    "calls": [
+      "CountSide",
+      "TryOpenNewRound"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-18",
+    "module": "ENG",
+    "name": "ManualBuy",
+    "signature": "bool ManualBuy()",
+    "purpose": "Block การเปิด Buy เดี่ยว",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-19",
+    "module": "ENG",
+    "name": "ManualSell",
+    "signature": "bool ManualSell()",
+    "purpose": "Block การเปิด Sell เดี่ยว",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-20",
+    "module": "ENG",
+    "name": "ManualHedge",
+    "signature": "bool ManualHedge()",
+    "purpose": "เรียก Guard กลางเปิดคู่",
+    "calls": [
+      "OpenHedgePair"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-21",
+    "module": "ENG",
+    "name": "ManualCloseBuy",
+    "signature": "bool ManualCloseBuy()",
+    "purpose": "สั่งปิดฝั่ง Buy",
+    "calls": [
+      "CloseOneSide"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-22",
+    "module": "ENG",
+    "name": "ManualCloseSell",
+    "signature": "bool ManualCloseSell()",
+    "purpose": "สั่งปิดฝั่ง Sell",
+    "calls": [
+      "CloseOneSide"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-23",
+    "module": "ENG",
+    "name": "ManualCloseAll",
+    "signature": "bool ManualCloseAll()",
+    "purpose": "สั่งปิดทั้งสองฝั่งใน Scope",
+    "calls": [
+      "CloseOneSide"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-24",
+    "module": "ENG",
+    "name": "GetTimeoutRemaining",
+    "signature": "int GetTimeoutRemaining()",
+    "purpose": "คำนวณเวลารอที่เหลือ",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "ENG-25",
+    "module": "ENG",
+    "name": "GetEngineGateText",
+    "signature": "string GetEngineGateText()",
+    "purpose": "คืน g_gateReason",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Engine.mqh"
+  },
+  {
+    "id": "PRO-01",
+    "module": "PRO",
+    "name": "TrailGVPrefix",
+    "signature": "string TrailGVPrefix()",
+    "purpose": "Namespace ของ Trail State",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-02",
+    "module": "PRO",
+    "name": "TrailGVName",
+    "signature": "string TrailGVName(ulong ticket)",
+    "purpose": "Key ของ Ticket",
+    "calls": [
+      "TrailGVPrefix"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-03",
+    "module": "PRO",
+    "name": "TrailLegacyGVName",
+    "signature": "string TrailLegacyGVName(ulong ticket)",
+    "purpose": "Key รุ่นเก่าสำหรับนำเข้า",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-04",
+    "module": "PRO",
+    "name": "ProtectInit",
+    "signature": "bool ProtectInit()",
+    "purpose": "ตรวจ Account/ความยาว Key",
+    "calls": [
+      "TrailGVPrefix"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-05",
+    "module": "PRO",
+    "name": "TrailLoadBest",
+    "signature": "double TrailLoadBest(ulong ticket, bool &found)",
+    "purpose": "อ่าน Best/นำเข้าแบบ opt-in",
+    "calls": [
+      "TrailGVName",
+      "TrailLegacyGVName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-06",
+    "module": "PRO",
+    "name": "TrailSaveBest",
+    "signature": "bool TrailSaveBest(ulong ticket, double bestPts)",
+    "purpose": "ตรวจ/Save Best และ Flush",
+    "calls": [
+      "TrailGVName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-07",
+    "module": "PRO",
+    "name": "TrailDeleteBest",
+    "signature": "void TrailDeleteBest(ulong ticket)",
+    "purpose": "ลบ Persistent Trail Key",
+    "calls": [
+      "TrailGVName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-08",
+    "module": "PRO",
+    "name": "TrailFind",
+    "signature": "int TrailFind(ulong ticket)",
+    "purpose": "ค้น index ใน g_trail",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-09",
+    "module": "PRO",
+    "name": "TrailUpsert",
+    "signature": "void TrailUpsert(ulong ticket, double profitPts)",
+    "purpose": "Restore/เพิ่ม Best/บันทึก",
+    "calls": [
+      "TrailFind",
+      "TrailLoadBest",
+      "TrailSaveBest"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-10",
+    "module": "PRO",
+    "name": "TrailRemove",
+    "signature": "void TrailRemove(ulong ticket)",
+    "purpose": "ลบ Track และ Persistent Key",
+    "calls": [
+      "TrailFind",
+      "TrailDeleteBest"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-11",
+    "module": "PRO",
+    "name": "TrailConfirmedClosed",
+    "signature": "bool TrailConfirmedClosed(ulong ticket)",
+    "purpose": "ยืนยันปิดครบจากประวัติ",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-12",
+    "module": "PRO",
+    "name": "TrailCleanup",
+    "signature": "void TrailCleanup()",
+    "purpose": "เก็บกวาด State ที่ยืนยันได้",
+    "calls": [
+      "TrailConfirmedClosed",
+      "TrailRemove",
+      "TrailGVPrefix"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-13",
+    "module": "PRO",
+    "name": "GetProfitPoints",
+    "signature": "double GetProfitPoints(ENUM_POSITION_TYPE dir, double entry)",
+    "purpose": "ระยะกำไร Buy-Bid/Sell-Ask",
+    "calls": [
+      "HedgePoint"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-14",
+    "module": "PRO",
+    "name": "ClosePositionByTicket",
+    "signature": "bool ClosePositionByTicket(ulong ticket, string reason)",
+    "purpose": "Wrapper ปิด Position",
+    "calls": [
+      "RawPositionClose"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-15",
+    "module": "PRO",
+    "name": "ModifySL",
+    "signature": "bool ModifySL(ulong ticket, double newSL, double keepTP, string tag)",
+    "purpose": "Wrapper แก้ SL/คง TP",
+    "calls": [
+      "RawPositionModify"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "PRO-16",
+    "module": "PRO",
+    "name": "ProtectOnTick",
+    "signature": "void ProtectOnTick()",
+    "purpose": "Cut Loss → RR → Trail → BE",
+    "calls": [
+      "TrailCleanup",
+      "GetProfitPoints",
+      "PointsToPrice",
+      "ModifySL",
+      "ClosePositionByTicket",
+      "TrailRemove",
+      "TrailFind",
+      "TrailLoadBest",
+      "TrailUpsert"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Protect.mqh"
+  },
+  {
+    "id": "UI-01",
+    "module": "UI",
+    "name": "PName",
+    "signature": "string PName(string id)",
+    "purpose": "ชื่อ Object ด้วย H1P_ prefix",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-02",
+    "module": "UI",
+    "name": "PanelChartWidth",
+    "signature": "int PanelChartWidth()",
+    "purpose": "อ่านความกว้างกราฟ",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-03",
+    "module": "UI",
+    "name": "PanelIsMinimized",
+    "signature": "bool PanelIsMinimized()",
+    "purpose": "สถานะย่อของ Panel",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-04",
+    "module": "UI",
+    "name": "PanelRefreshLayoutMetrics",
+    "signature": "bool PanelRefreshLayoutMetrics()",
+    "purpose": "คำนวณ Layout และตรวจเปลี่ยน",
+    "calls": [
+      "PanelChartWidth"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-05",
+    "module": "UI",
+    "name": "PanelDeleteObjects",
+    "signature": "void PanelDeleteObjects()",
+    "purpose": "ลบ Object ตาม Panel prefix",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-06",
+    "module": "UI",
+    "name": "PanelLabel",
+    "signature": "void PanelLabel(string id, string text, int x, int y, color clr, int fontSize = 8, string font = \"Arial Bold\")",
+    "purpose": "สร้าง/อัปเดต Label",
+    "calls": [
+      "PName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-07",
+    "module": "UI",
+    "name": "PanelFrame",
+    "signature": "void PanelFrame(string id, int x, int y, int w, int h, color frameColor)",
+    "purpose": "สร้างกรอบปุ่ม",
+    "calls": [
+      "PName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-08",
+    "module": "UI",
+    "name": "PanelButton",
+    "signature": "void PanelButton(string id, string text, int x, int y, int w, int h, color bg, color border, int fontSize = 9)",
+    "purpose": "สร้าง/อัปเดต Button",
+    "calls": [
+      "PName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-09",
+    "module": "UI",
+    "name": "PanelSignColor",
+    "signature": "color PanelSignColor(double value)",
+    "purpose": "สีบวก/ลบ/ศูนย์",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-10",
+    "module": "UI",
+    "name": "PanelSet",
+    "signature": "void PanelSet(string id, string text, color clr)",
+    "purpose": "อัปเดตข้อความและสี Label",
+    "calls": [
+      "PName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-11",
+    "module": "UI",
+    "name": "PanelSetVisible",
+    "signature": "void PanelSetVisible(string id, bool show)",
+    "purpose": "แสดง/ซ่อน Object",
+    "calls": [
+      "PName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-12",
+    "module": "UI",
+    "name": "PanelFooterText",
+    "signature": "string PanelFooterText()",
+    "purpose": "จัด Comment เป็น Footer",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-13",
+    "module": "UI",
+    "name": "GetFloatingPL",
+    "signature": "double GetFloatingPL()",
+    "purpose": "รวม floating Profit+Swap ใน Scope",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-14",
+    "module": "UI",
+    "name": "TryGetCycleLoss",
+    "signature": "bool TryGetCycleLoss(double &loss)",
+    "purpose": "อ่านฐาน/Net; ไม่เขียน State",
+    "calls": [
+      "HedgeStateGVName",
+      "TryGetClosedNet"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-15",
+    "module": "UI",
+    "name": "PanelApplyVisibility",
+    "signature": "void PanelApplyVisibility()",
+    "purpose": "ใช้สถานะย่อกับ Objects",
+    "calls": [
+      "PanelIsMinimized",
+      "PanelSetVisible",
+      "PName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-16",
+    "module": "UI",
+    "name": "PanelBuild",
+    "signature": "void PanelBuild()",
+    "purpose": "ประกอบ Panel/ปุ่มทั้งหมด",
+    "calls": [
+      "PanelDeleteObjects",
+      "PanelRefreshLayoutMetrics",
+      "PName",
+      "PanelLabel",
+      "PanelButton",
+      "PanelFrame",
+      "PanelFooterText",
+      "PanelApplyVisibility",
+      "PanelUpdate"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-17",
+    "module": "UI",
+    "name": "PanelInit",
+    "signature": "void PanelInit()",
+    "purpose": "เริ่ม Panel",
+    "calls": [
+      "PanelBuild"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-18",
+    "module": "UI",
+    "name": "PanelCheckResponsiveLayout",
+    "signature": "void PanelCheckResponsiveLayout()",
+    "purpose": "Rebuild เมื่อ Layout เปลี่ยน",
+    "calls": [
+      "PanelRefreshLayoutMetrics",
+      "PanelBuild"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-19",
+    "module": "UI",
+    "name": "PanelUpdate",
+    "signature": "void PanelUpdate()",
+    "purpose": "อ่านข้อมูลและแสดงผล",
+    "calls": [
+      "GetSessionStatusText",
+      "PanelSet",
+      "GetSpreadPoints",
+      "GetTimeoutRemaining",
+      "TryGetVirtualEquity",
+      "GetEffectiveLotForEquity",
+      "PanelSignColor",
+      "TryGetClosedNet",
+      "FormatMoney",
+      "TryGetCycleLoss",
+      "GetFloatingPL",
+      "CountSide",
+      "FormatPoints"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-20",
+    "module": "UI",
+    "name": "PanelOnChartEvent",
+    "signature": "void PanelOnChartEvent(int id, long lparam, double dparam, string sparam)",
+    "purpose": "รับปุ่ม/resize และ dispatch",
+    "calls": [
+      "PanelCheckResponsiveLayout",
+      "PanelUpdate",
+      "PName",
+      "ManualBuy",
+      "ManualSell",
+      "ManualCloseBuy",
+      "ManualCloseSell",
+      "ManualCloseAll",
+      "ManualHedge",
+      "AddRefill",
+      "TryGetVirtualEquity",
+      "PanelApplyVisibility"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "UI-21",
+    "module": "UI",
+    "name": "PanelDeinit",
+    "signature": "void PanelDeinit()",
+    "purpose": "ลบ Panel เมื่อหยุด",
+    "calls": [
+      "PanelDeleteObjects"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Panel.mqh"
+  },
+  {
+    "id": "REP-01",
+    "module": "REP",
+    "name": "ReportGVName",
+    "signature": "string ReportGVName()",
+    "purpose": "Key RPD",
+    "calls": [
+      "HedgeStateGVName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Report.mqh"
+  },
+  {
+    "id": "REP-02",
+    "module": "REP",
+    "name": "ReportInit",
+    "signature": "void ReportInit()",
+    "purpose": "เริ่ม State/ตรวจ Report due",
+    "calls": [
+      "ReportGVName"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Report.mqh"
+  },
+  {
+    "id": "REP-03",
+    "module": "REP",
+    "name": "ReportWriteRow",
+    "signature": "bool ReportWriteRow(int fh, string a, string b, string c, string d, string e, ulong &expectedBytes)",
+    "purpose": "เขียน/ตรวจ bytes หนึ่งแถว",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Report.mqh"
+  },
+  {
+    "id": "REP-04",
+    "module": "REP",
+    "name": "ReportAbortTemp",
+    "signature": "void ReportAbortTemp(int fh, string tempName, string stage)",
+    "purpose": "Log/ปิด/ลบ Temp เมื่อ abort",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Report.mqh"
+  },
+  {
+    "id": "REP-05",
+    "module": "REP",
+    "name": "ReportReadRow",
+    "signature": "bool ReportReadRow(int fh, string &fields[])",
+    "purpose": "อ่าน CSV แถวละห้า fields",
+    "calls": [],
+    "file": "EA_Hegde/include/Hedge1_Report.mqh"
+  },
+  {
+    "id": "REP-06",
+    "module": "REP",
+    "name": "ReportReadCompletion",
+    "signature": "bool ReportReadCompletion(string fname, datetime periodStart, datetime &savedEnd)",
+    "purpose": "ตรวจ Header/TOTAL/Marker/Identity",
+    "calls": [
+      "ReportReadRow"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Report.mqh"
+  },
+  {
+    "id": "REP-07",
+    "module": "REP",
+    "name": "GenerateReportCSV",
+    "signature": "bool GenerateReportCSV(datetime periodStart, datetime &periodEnd)",
+    "purpose": "สร้าง CSV หรือ Recover End เดิม",
+    "calls": [
+      "ReportReadCompletion",
+      "ReportWriteRow",
+      "ReportAbortTemp",
+      "FormatMoney"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Report.mqh"
+  },
+  {
+    "id": "REP-08",
+    "module": "REP",
+    "name": "ReportOnTick",
+    "signature": "void ReportOnTick()",
+    "purpose": "Report due/flat/retry และ Gate",
+    "calls": [
+      "CountSide",
+      "ReportGVName",
+      "GenerateReportCSV"
+    ],
+    "file": "EA_Hegde/include/Hedge1_Report.mqh"
+  }
+]

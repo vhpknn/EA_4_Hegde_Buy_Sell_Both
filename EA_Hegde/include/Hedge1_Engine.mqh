@@ -688,6 +688,13 @@ bool ManualSell()
 
 bool ManualHedge()
   {
+   if(!g_engineReady)
+      return(false);
+
+   //--- รีเฟรช Report Gate ก่อน Manual Entry
+   //--- Manual ยังข้าม Auto Session/Timeout/Spread ตามกติกาเดิม
+   ReportOnTick();
+
    return(OpenHedgePair());
   }
 

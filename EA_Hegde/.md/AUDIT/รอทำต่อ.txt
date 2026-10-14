@@ -1,0 +1,124 @@
+AUDIT_FUNCTION_INDEX.md
+สารบัญนี้รวม 100 ฟังก์ชันที่นิยามใน Source ทั้ง 9 ไฟล์ของ Baseline 9900a1e ไม่รวม Native MQL5 API, Inputs, Enum หรือ Struct เป็นฟังก์ชันของโปรเจกต์ ขอบเขตไฟล์ยืนยันจาก Baseline ที่ระบุครับ
+
+text
+# AUDIT_FUNCTION_INDEX — Hedge 1.0 MT5
+
+วันที่จัดทำ: 14 ตุลาคม 2026
+
+เอกสารประเภท:
+สารบัญฟังก์ชันและความสัมพันธ์ของ Source สำหรับ Audit
+
+## 1. Source Reference
+
+Repository:
+
+vhpknn/EA_4_Hegde_Buy_Sell_Both
+
+Branch ที่ตรวจไว้:
+
+audit/phase-2-3-trailing-restart-strict-basket
+
+Logic Baseline:
+
+```text
+9900a1e364b7aac01a8f6e3984ce451f34553259
+```
+
+ขอบเขต:
+
+```text
+EA_Hegde/Hedge1.0.mq5
+EA_Hegde/include/Hedge1_Inputs.mqh
+EA_Hegde/include/Hedge1_Utils.mqh
+EA_Hegde/include/Hedge1_Capital.mqh
+EA_Hegde/include/Hedge1_Session.mqh
+EA_Hegde/include/Hedge1_Engine.mqh
+EA_Hegde/include/Hedge1_Protect.mqh
+EA_Hegde/include/Hedge1_Panel.mqh
+EA_Hegde/include/Hedge1_Report.mqh
+```
+
+รวม Source 9 ไฟล์
+
+ห้ามนำ Source จาก main เก่าหรือโปรเจกต์อื่น
+มาปะปนกับสารบัญของ Baseline นี้
+
+## 2. ความหมายและขอบเขตของสารบัญ
+
+เอกสารนี้ระบุ:
+
+- นิยามฟังก์ชันที่มีอยู่ใน Source
+- Signature และไฟล์เจ้าของ
+- หน้าที่โดยสรุปตามโค้ด
+- ผู้เรียกโดยตรงภายในขอบเขต 9 ไฟล์
+- Direct includes ของแต่ละโมดูล
+- เส้นทางเรียกหลักที่ใช้ตรวจข้ามไฟล์
+
+เอกสารนี้ไม่ใช่:
+
+- ผล Runtime Test
+- หลักฐานว่าฟังก์ชันทุกตัวถูกเรียกจริงในรอบทดสอบ
+- การรับรองว่าทุกฟังก์ชันตรงข้อกำหนดครบแล้ว
+- การรับรองว่าไม่มีบั๊ก
+- การอนุมัติใช้เงินจริง
+
+ชื่อฟังก์ชันและ Signature ใช้เป็นจุดค้นหาใน Source
+ไม่กำหนดเลขบรรทัดตายตัว เพราะ Comment หรือการจัดรูปแบบ
+อาจทำให้เลขบรรทัดเปลี่ยน
+
+## 3. หลักการนับ
+
+นับเฉพาะฟังก์ชันที่โปรเจกต์นิยามไว้
+รวม Event handlers และ Wrapper functions
+
+ไม่นับสิ่งต่อไปนี้เป็นฟังก์ชันของโปรเจกต์:
+
+- Inputs
+- Enum
+- Struct
+- Global variables
+- Macro / #define
+- Native MQL5 API เช่น OrderSend(), FileWrite(), HistorySelect()
+- ฟังก์ชันที่เคยเสนอไว้แต่ยังไม่ได้ Implement
+- ฟังก์ชันจากโฟลเดอร์ EA อื่นที่อยู่นอกขอบเขต
+
+## 4. สรุปจำนวนฟังก์ชัน
+
+| กลุ่ม | ไฟล์ | จำนวน |
+|---|---|---:|
+| MAIN | Hedge1.0.mq5 | 4 |
+| INPUTS | Hedge1_Inputs.mqh | 0 |
+| UTIL | Hedge1_Utils.mqh | 8 |
+| CAP | Hedge1_Capital.mqh | 12 |
+| SES | Hedge1_Session.mqh | 6 |
+| ENG | Hedge1_Engine.mqh | 25 |
+| PRO | Hedge1_Protect.mqh | 16 |
+| UI | Hedge1_Panel.mqh | 21 |
+| REP | Hedge1_Report.mqh | 8 |
+| TOTAL | 9 ไฟล์ | 100 |
+
+## 5. วิธีอ่าน Function ID และ Caller
+
+ตัวอย่าง:
+
+```text
+ENG-14 = OpenHedgePair()
+PRO-16 = ProtectOnTick()
+UI-20  = PanelOnChartEvent()
+```
+
+คอลัมน์ Direct callers ใช้ ID ในเอกสารนี้
+ให้ค้นหา ID เพื่อดู Signature และไฟล์เจ้าของ
+
+ความหมาย:
+
+- MT5 Event:
+  เป็น Event handler ที่แพลตฟอร์มเป็นผู้เรียกตามเหตุการณ์
+  ไม่ใช่ฟังก์ชันอีกตัวในโปรเจกต์เรียกโดยตรง
+
+- ID:
+  พบการเรียกโดยตรงจากฟังก์ชันนั้นภายใน Soยตรง
+
+- ID:
+  พบการเรียกโดยตรงจากฟังก์ชันนั้นภายใน So

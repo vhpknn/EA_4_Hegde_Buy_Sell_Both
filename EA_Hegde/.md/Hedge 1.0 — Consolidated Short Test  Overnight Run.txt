@@ -1,0 +1,83 @@
+Hedge 1.0 — Consolidated Short Test / Overnight Run
+Baseline and current status
+Logic baseline: 9900a1e364b7aac01a8f6e3984ce451f34553259.
+
+Latest reported compile: 0 errors, 0 warnings.
+
+Comment-only edits do not change the planned logic scope; record whether applied.
+
+Runtime results: not yet supplied. This document is preparation, not proof of passing.
+
+Scope: Demo hedging account; one EA instance per Symbol + Magic; separate unused test identities; no real-money instruction.
+
+Execution rule
+Finish preparation before starting either batch. No code changes or compile/review loop between individual cases. Collect all evidence, then review the combined result. Stop the run for a critical exposure/data-integrity fault; mark unperformed cases rather than pretending they passed.
+
+Short batch
+26 planned cases in the checklist. Use historical replay for tick-driven behavior and multi-day Report timing; use a Demo chart for actual button/lifecycle/terminal-state evidence. These are parts of one Short Test batch, not separate development phases. Broker-provided real ticks require the appropriate history to be available. [web:137]
+
+Terminal global variables and tester-agent global variables are separate environments. F3 changes in a Demo terminal are not evidence that a tester-agent state was changed. [web:139]
+
+Draft short profiles — NOT FINAL .set FILES
+Keep the EA point unit at the intended InpPointDigits. Let k be a scale selected after broker spread/Stops Level/Tick Size checks:
+
+Cut Loss: 70*k.
+
+BE Trigger: 120*k.
+
+BE Step: 10*k.
+
+Trailing Pullback: 50*k.
+
+Armed level from the current code: 120*k.
+
+Trailing-focused case: RR=0; Trailing=true; BE_TRAILING; BE%=20.
+
+RR-focused case: RR=200; Trailing=false; BE_OFF; Trigger remains 120*k.
+
+Auto/Tester cases: InpReopenOnEmpty=true only for the planned auto run.
+
+Manual/lifecycle cases: InpReopenOnEmpty=false.
+
+Start with fixed-volume cases, then separately exercise Auto-Lot in the same batch.
+
+Report cases: InpEnableReport=true, InpReportDays=1, historical replay long enough to reach the report condition.
+
+Both legacy import options false except the explicitly prepared migration case.
+
+Do not load an executable draft until the actual Symbol specification and test identities have been confirmed. Buy SL validity references Bid; Sell SL validity references Ask. [web:141]
+
+Draft long profile
+Keep user reference distances: CutLoss=700, BE Trigger=1200, BE Step=100, BE%=20, Pullback=500, RR=200. Enable auto reopening, Timeout=300, Spread check=true and MaxSpread=25 as the current reference policy. Do not raise the spread limit merely to manufacture trades. Set ReportDays=1 for coverage of reporting in the overnight test; preserve the normal 5-day profile separately. Select Session windows using server time and keep settings fixed during the run. All values remain subject to the broker preflight.
+
+Long-run goals: 8 checklist cases. Plan 24–48 hours with market ticks, report maturity, a flat basket opportunity, and session boundaries. Crossing local midnight alone is not proof of a completed report period. Report code uses InpReportDays*86400 and TimeCurrent. An event that never occurs is NOT_COVERED, not PASS.
+
+Evidence bundle
+Source SHA, compile result, actual loaded presets and timestamps.
+
+Tester settings/date window/data model and tester Journal/CSV outputs.
+
+Demo Experts/Journal, selected Trade/History/Panel screenshots, Demo CSV outputs.
+
+State snapshots only for cases that require them.
+
+Separate Short and Long evidence directories; keep tester and Demo origin identifiable.
+
+The assistant will fill the result column after reviewing evidence; the user need not audit every CSV cell.
+
+Result labels
+PASS / FAIL / NOT_COVERED / ENVIRONMENT_BLOCKED. Fault-injection cases need actual rejection/failure evidence or a clearly documented fixture; no blanket pass from a quiet run. If the path, wrong compiled folder, wrong symbol, account mode, data history, or broker limits are the problem, resolve the environment before changing logic.
+
+Known limits
+No cross-instance lock for the same Symbol + Magic.
+
+State namespaces include account login but not broker server.
+
+Trail storage is ticket-based; service-operation ticket changes are not fully covered.
+
+CSV completion validation is structural, not a whole-file checksum.
+
+Accounting is the EA's Symbol+Magic Profit/Swap/Commission scope, not every possible account fee.
+
+Data required to finalize presets
+Provide the actual Demo Symbol specification (including suffix, digits, Tick Size, Stops Level, Volume Min/Max/Step) and fresh Bid/Ask or Panel spread. Confirm unused Short/Long Magic identities before executable .set files are produced. No new logic patch is required for this preparation step.

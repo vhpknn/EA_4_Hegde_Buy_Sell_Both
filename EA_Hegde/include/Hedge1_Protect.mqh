@@ -287,11 +287,17 @@ bool TrailConfirmedClosed(ulong ticket)
      {
       ulong liveTicket = PositionGetTicket(i);
 
+      //--- อ่านรายการ Position ไม่ครบ: ยังยืนยันการปิดไม่ได้
       if(liveTicket == 0)
-         continue;
+         return(false);
 
-      ulong identifier =
-         (ulong)PositionGetInteger(POSITION_IDENTIFIER);
+      long identifierValue = 0;
+
+      if(!PositionGetInteger(POSITION_IDENTIFIER, identifierValue)
+         || identifierValue <= 0)
+         return(false);
+
+      ulong identifier = (ulong)identifierValue;
 
       if(liveTicket == ticket || identifier == ticket)
          return(false);
@@ -315,27 +321,40 @@ bool TrailConfirmedClosed(ulong ticket)
       if(deal == 0)
          return(false);
 
-      ENUM_DEAL_TYPE dealType =
-         (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+      long dealTypeValue = 0;
+
+      if(!HistoryDealGetInteger(deal, DEAL_TYPE, dealTypeValue))
+         return(false);
+
+      ENUM_DEAL_TYPE dealType = (ENUM_DEAL_TYPE)dealTypeValue;
 
       if(dealType != DEAL_TYPE_BUY
          && dealType != DEAL_TYPE_SELL)
          continue;
 
-      if(HistoryDealGetString(deal, DEAL_SYMBOL) != _Symbol)
+      string symbol = "";
+      long entryValue = 0;
+      long magic = 0;
+      double volume = 0.0;
+
+      if(!HistoryDealGetString(deal, DEAL_SYMBOL, symbol)
+         || !HistoryDealGetInteger(deal, DEAL_ENTRY, entryValue)
+         || !HistoryDealGetInteger(deal, DEAL_MAGIC, magic)
+         || !HistoryDealGetDouble(deal, DEAL_VOLUME, volume))
          return(false);
 
-      ENUM_DEAL_ENTRY entry =
-         (ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal, DEAL_ENTRY);
+      if(symbol != _Symbol
+         || !MathIsValidNumber(volume)
+         || volume <= 0.0)
+         return(false);
 
-      double volume = HistoryDealGetDouble(deal, DEAL_VOLUME);
+      ENUM_DEAL_ENTRY entry = (ENUM_DEAL_ENTRY)entryValue;
 
       if(entry == DEAL_ENTRY_IN)
         {
          netVolume += volume;
 
-         if(HistoryDealGetInteger(deal, DEAL_MAGIC)
-            == InpMagicNumber)
+         if(magic == InpMagicNumber)
             sawOwnEntry = true;
         }
       else if(entry == DEAL_ENTRY_OUT
@@ -345,6 +364,9 @@ bool TrailConfirmedClosed(ulong ticket)
          sawExit = true;
         }
       else
+         return(false);
+
+      if(!MathIsValidNumber(netVolume))
          return(false);
      }
 
@@ -633,8 +655,15 @@ void ProtectOnTick()
                         ? entry + PointsToPrice(lockPts)
                         : entry - PointsToPrice(lockPts);
 
-         //--- ขยับเฉพาะทิศที่ดีขึ้นเท่านั้น (Buy: SL ขึ้นเท่านั้น / Sell: ลงเท่านั้น)
-         bool better = (dir == POSITION_TYPE_BUY) ? (newSL > sl) : (newSL < sl);
+         //--- หาก SL หาย ให้พยายามติดตั้งได้ทั้ง Buy และ Sell
+         //--- หากมี SL แล้ว ขยับเฉพาะทิศที่ป้องกันได้ดีขึ้น
+         bool better = (sl == 0.0);
+
+         if(sl > 0.0)
+            better = (dir == POSITION_TYPE_BUY)
+                     ? (newSL > sl)
+                     : (newSL < sl);
+
          if(better)
             ModifySL(ticket, newSL, tp, "BREAK-EVEN");
         }

@@ -1,3 +1,12 @@
+
+https://github.com/vhpknn/EA_4_Hegde_Buy_Sell_Both/tree/audit/phase-2-3-trailing-restart-strict-basket
+
+commit ล่าสุด  18c4769
+
+
+-----
+
+
 จากสถานะที่คุณแจ้ง **เหลือ 4 ช่วงใหญ่** ครับ: ปิดงาน Phase 4 → Short Test แบบรวม → Long Run ข้ามวัน → ตรวจผลและปิดงาน ไม่กลับไปทดสอบทีละ Patch อีก
 
 ## สถานะปัจจุบัน
