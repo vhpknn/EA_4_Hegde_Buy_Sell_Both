@@ -1,0 +1,42 @@
+; Hedge 1.0 - SHORT_12_CAPITAL_ZERO
+; Source=1a3b38f04b991c70fa86195d7d01360955ec4ccd
+; Environment=TESTER_CLEAN_SCOPE
+; Initial virtual capital is zero
+; Verify history and refill state before testing
+InpPointDigits=2
+InpInitialCapital=0.0
+InpRefillAmount=10.0
+InpBaseLot=0.01
+InpAutoLot=false
+InpLotStepMoney=50.0
+InpLotIncrement=0.01
+InpMaxLotStep=4
+InpReopenOnEmpty=true
+InpUseTimeout=true
+InpTimeoutSeconds=300
+InpUseSpreadCheck=true
+InpMaxSpreadPoints=25
+InpDeviationPoints=10
+InpCutLossPoints=70
+InpBreakEvenMode=2
+InpBreakEvenPct=20.0
+InpBreakEvenTrigger=120
+InpBreakEvenStep=10
+InpRRPercent=0.0
+InpUseTrailingTP=true
+InpTrailingPullback=50
+InpSession1Block=false
+InpSession1Start=01:00
+InpSession1End=04:00
+InpSession2Block=false
+InpSession2Start=07:00
+InpSession2End=12:00
+InpSession3Block=false
+InpSession3Start=21:00
+InpSession3End=24:00
+InpMagicNumber=99912
+InpTradeComment=H1 12_CAPITAL_ZERO
+InpEnableReport=false
+InpReportDays=1
+InpStateImportLegacy=false
+InpTrailImportLegacy=false
