@@ -1,6 +1,0 @@
-{
-  "mt5_data_folder": "C:/YOUR_MT5_DATA_FOLDER",
-  "preset_folder": "./Presets",
-  "symbol": "XAUUSD",
-  "preset_pattern": "SHORT_*.set"
-}
