@@ -1,0 +1,7 @@
+Known Issues accepted for LONG 17 / LONG 18 (decision date 2026-10-22):
+- F-01  Duplicate "No changes" log lines during BE/Trailing. Log quality only; no effect on orders.
+- F-02  Invalid stops (10016/4756) when the market moves fast at entry; Retry recovered 2/2 (0.27 s).
+- DEV-003  SL distance = set value - favourable slippage (tighter than spec, never looser).
+- DEV-004  BE lock differs 1-2 pts in some cases; lock follows 20% x profit rounded to BE Step.
+Patch after LONG 18 under the Jigsaw Patch Rule; code stays frozen at daebba9 during LONG 17/18.
+Stop conditions during LONG: Retry fails or Buy/Sell count mismatched after open; EA removed or INITFAILED; capital dead before Report time; unexpected terminal restart (record build number).

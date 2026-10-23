@@ -16,6 +16,7 @@
 
 datetime g_reportLastFail = 0;   // เวลาที่ Report ล้มเหลวล่าสุด
 datetime g_reportCompletedAt = 0; // สร้าง CSV แล้ว แต่ยังรอบันทึกขอบเขตรอบใหม่
+ulong    g_reportEmptyTick = 0;   // GetTickCount64() ตอนเห็น Basket ว่างครั้งแรก
 
 //+------------------------------------------------------------------+
 //| ชื่อตัวแปรถาวรเก็บวันเริ่มนับรอบรายงาน (กันหายเวลารีสตาร์ท)        |
@@ -33,6 +34,7 @@ void ReportInit()
    g_reportBlocksEntry = false;
    g_reportLastFail = 0;
    g_reportCompletedAt = 0;
+   g_reportEmptyTick = 0;
 
    if(!InpEnableReport)
       return;
@@ -251,6 +253,45 @@ bool ReportReadCompletion(string fname,
 
    FileClose(fh);
    return(false);
+  }
+
+//+------------------------------------------------------------------+
+//| เวลาของดีลล่าสุดของ Magic/Symbol นี้ตั้งแต่ต้นรอบรายงาน             |
+//| คืน false ถ้าอ่าน History ไม่สำเร็จ (ผู้เรียกต้องรอแล้วลองใหม่)       |
+//+------------------------------------------------------------------+
+bool ReportLastDealTime(datetime periodStart, datetime &lastDeal)
+  {
+   lastDeal = 0;
+
+   if(!HistorySelect(periodStart, TimeCurrent() + 86400))
+      return(false);
+
+   int total = HistoryDealsTotal();
+
+   for(int i = 0; i < total; i++)
+     {
+      ulong ticket = HistoryDealGetTicket(i);
+
+      if(ticket == 0)
+         return(false);
+
+      long magic = 0;
+      string symbol = "";
+      long timeValue = 0;
+
+      if(!HistoryDealGetInteger(ticket, DEAL_MAGIC, magic)
+         || !HistoryDealGetString(ticket, DEAL_SYMBOL, symbol)
+         || !HistoryDealGetInteger(ticket, DEAL_TIME, timeValue))
+         return(false);
+
+      if(magic != InpMagicNumber || symbol != _Symbol)
+         continue;
+
+      if((datetime)timeValue > lastDeal)
+         lastDeal = (datetime)timeValue;
+     }
+
+   return(true);
   }
 
 bool GenerateReportCSV(datetime periodStart, datetime &periodEnd)
@@ -612,7 +653,10 @@ void ReportOnTick()
 
    //--- Basket ยังไม่ว่าง: ให้ Protection จัดการต่อ
    if(total > 0)
+     {
+      g_reportEmptyTick = 0;
       return;
+     }
 
    datetime now = TimeCurrent();
    string name = ReportGVName();
@@ -681,7 +725,23 @@ void ReportOnTick()
 
    if(g_reportCompletedAt == 0)
      {
+      //--- รอให้ Basket ว่างนิ่งอย่างน้อย 2 วินาที เพื่อให้ History รับดีลสุดท้ายครบ
+      if(g_reportEmptyTick == 0)
+         g_reportEmptyTick = GetTickCount64();
+
+      if(GetTickCount64() - g_reportEmptyTick < 2000)
+         return;
+
       datetime periodEnd = now;
+
+      //--- ปลายช่วงต้องเลยเวลาดีลสุดท้าย ไม่เช่นนั้นดีลนั้นถูกตัดทิ้งโดย t >= periodEnd
+      datetime lastDeal = 0;
+
+      if(!ReportLastDealTime(periodStart, lastDeal))
+         return;
+
+      if(periodEnd <= lastDeal)
+         return;
 
       if(periodEnd <= periodStart)
         {
@@ -716,6 +776,7 @@ void ReportOnTick()
    g_reportCompletedAt = 0;
    g_reportLastFail = 0;
    g_reportBlocksEntry = false;
+   g_reportEmptyTick = 0;
 
    Print("Hedge1: Report Cycle COMPLETE | Entry unlocked");
   }

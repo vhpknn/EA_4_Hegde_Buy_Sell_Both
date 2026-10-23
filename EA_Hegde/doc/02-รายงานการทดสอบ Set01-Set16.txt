@@ -1,0 +1,97 @@
+
+---
+
+## 📊 สรุปรายงานผลการทดสอบระบบ (Preset 01 – Preset 10)
+
+| Preset | หัวข้อการทดสอบ (Feature) | ผลการทดสอบ | รายละเอียดและสิ่งที่ตรวจพบ |
+| :---: | :--- | :---: | :--- |
+| **01** | **Manual Ops** | **PASS** | รันบน Source: `1a3b38f`, ตรวจพบประเด็น **F-01** |
+| **02** | **Cut Loss (Auto)** | **PASS** | ฟังก์ชันตัดขาดทุนอัตโนมัติทำงานถูกต้อง ไม่พบ Finding ใหม่ |
+| **03** | **BE Fixed** | **PASS (บางส่วน)** | การล็อกทุนแบบคงที่ทำงานได้ และไม่พบ F-01 เกิดซ้ำในเงื่อนไขนี้ |
+| **04** | **BE Trailing** | **PASS** | การเลื่อนทุนแบบ Trailing ทำงานได้ แต่พบ **F-01** และ **F-02** |
+| **05** | **Armed Trailing** | **PASS** | ระบบเลื่อนตามราคาเมื่อถึงเป้าทำงานได้ พบ **F-01** และ **F-02** |
+| **06** | **RR (Risk:Reward)** | **PASS** | อัตราส่วน RR ทำงานได้ พบปัญหา **DEV-003** และ **F-02** |
+| **07** | **Auto Timeout** | **PASS** | ฟังก์ชันจับเวลาหมดอายุทำงานผ่าน (ขา Buy เทียบผลจาก Preset 05) |
+| **08** | **Session (ช่วงเวลาเทรด)** | **PASS** | ทำงานตามช่วงเวลาได้ พบ **F-01, F-02, DEV-003, DEV-004** |
+| **09** | **Session Invalid** | **PASS** | จัดการ Error และข้าม Input เวลาที่ไม่ถูกต้องได้ถูกต้อง |
+| **10** | **Report (Tester)** | **PASS** | ตรวจสอบการส่งออกรายงานและไฟล์ CSV Output ครบถ้วน |
+
+---
+
+## ⚠️ รายการประเด็นและข้อบกพร่องที่บันทึกไว้ (Findings & Bug List)
+เป็นจุดที่ต้องเตรียมส่งให้ Dev หรือแก้ในชุดแพตช์ (Patch Phase):
+
+1. **F-01 (Logging/BE Logic):** พบข้อความ `ล้มเหลว (No changes)` รัวๆ สะสมถึง 68 ครั้ง เกิดจากบอทพยายามส่งคำสั่งแก้ Stop Loss ซ้ำค่าเดิม ทำให้ Log ขยะท่วมไฟล์
+2. **F-02 (Order Execution):** โดนปฏิเสธคำสั่งด้วย `Invalid stops` (Error 10016 / 4756) เวลาตลาดวิ่งเร็ว/ผันผวน เพราะราคาเลื่อนเข้าใกล้ราคาตลาดเกินกว่า Stops Level ที่โบรกเกอร์อนุญาต
+3. **DEV-003 (Slippage Logic):** การส่งคำสั่ง Modify Cut Loss เมื่อ Slippage ไม่ได้เปรียบ 1 Point ทำงานไม่คงเส้นคงวา (เจอทั้งขา Buy/Sell) สันนิษฐานว่าเกิดจากการเปรียบเทียบทศนิยมแบบ Floating Point
+4. **DEV-004 (Step Precision):** การปัดเศษทศนิยมของราคา (Best → Step) ทำให้บางจังหวะจุดล็อก BE คลาดเคลื่อนไปเล็กน้อย (1–2 Points)
+
+---
+
+## 📌 สิ่งที่ยังไม่ได้ทดสอบ (NOT_COVERED / ค้างทำต่อ)
+หัวข้อที่ต้องนำไปทดสอบต่อใน Preset ถัดไป หรือรอบ Long Run:
+- **State Recovery:** การกู้ข้อมูลรายงาน (Report Recovery) หลังระบบ Restart, การกู้ค่า Best ระหว่างช่วง Trailing และการรองรับกรณีไฟล์ CSV บันทึกไม่สำเร็จ
+- **Session & Protection Edge Cases:** การบล็อกของ Session 1 และ 3 (ที่ยังไม่ได้ครอบคลุมใน Preset 08), การทดสอบ Timeout เมื่อ Basket ว่างเปล่า และระบบ Protection เมื่อเน็ตหลุด/เครื่องดับ
+- **การทดสอบระยะยาว:** การรันต่อเนื่อง 24 ชั่วโมงบนพอร์ต Demo จริง และการเปิดไม้แก้ด้วยมือ (Manual Hedge) คู่กับเงื่อนไข Timeout/Spread
+
+---
+
+-
+
+
+SHORT_01–16 ผ่านครบทั้ง 16 ชุด ไม่มีชุดที่ล้มเหลว ชุดที่เคยเป็น "ผ่านบางส่วน" ทั้ง 4 ชุด (03, 12, 13, 14) ปิดครบแล้ว ที่ยังเปิดอยู่คือ Finding 4 รายการ และงานที่ยังไม่ได้ทดสอบบางข้อ ผมรวมจากบันทึกสรุปเดิม กับรอบที่ทดสอบวันนี้ และ Log SHORT_14 ใน Note.txt เวลาทั้งหมดเป็นเวลาเครื่อง [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/67976499/f0ed55da-51d1-4de6-9842-07ba01028198/handoff_srupphlkaarthds-b-Preset-01-16.md?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Checksum-Mode=ENABLED&X-Amz-Credential=ASIA2F3EMEYETF35NWSE%2F20261021%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261021T203807Z&X-Amz-Expires=1127&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEJz%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJIMEYCIQDkJer9QD2vuMP%2FQYOeTKluzA7AlzzlpjWrXF%2BZwK3VxwIhAIxaoDN3nAn5S4lBFFdfciP%2FuWEtqiZBDRrpDO1W2PWUKoAFCGUQARoMNjk5NzUzMzA5NzA1IgzuLeYQ721uw8pgHG8q3QRkT2KjIaZAtEztU9bRcq%2B4MUEVjd83Bvz9HDFVeVu4%2FrBbGs1HtzX6ffGwk2n%2BR55jqHBNyal4koAVzX%2BzY3xIOd52k9EZ3enm0W5jSbRp9HxLAebjuQujR4Lcujy1ljVImhslLr2yu2NGSeUtrsKtBEIIfHS2yguCUmqAuYLxrn%2Foq5KXYbmbD5zE%2FWtAzbNiJioxo%2B4hqobqrtLY5tKdahi%2BufYOX0mpoydhbP5Lbjh4mcW2REM5suQpJGSYKNj93MwB3AtYI5jPEbv6dRJDI8IZmavDzekd%2BDLkApOEtC21cM5x1g0%2BF7NgudLA7iIm%2FPjzurF%2BD1Jsw02YzMVKfUVFa8Bp9XoOESpbo3ivTH2D8pEO2YnuuNwkgEhuPA%2BlQzrdvmGnfMF%2BE8pKY5mXvvaVfnXc5q6ZvaQkuHAjxjiRU4HdUrgO1y7xwtfUFbZZVc%2Fdoev26xLS5fNFySKgsPgO4TyuelPPGRgocbPXuHGokga0dC0fHmNOyv2wXGuQ4FW8dxFx5%2BDSghQZCTpyf4KBCsqg5Syhb%2FMeXzsv1t3ZjgCpTxCJDuzRO9m8J%2FEE%2Bgunb2OkBEq7nTTzoHlvOoUW13ISyaL7F9QcMSsEwc7UGkjyHUBwbjbYbwTOxakneArc7ZXbOvSjDsFPQp5cD5C%2Fg6b0psUh%2FIJakT07j6WbwYOCfioyjXDA4oQzqptdP4W6PnZ6di1EPzLJFNRHN64jBTbZVLxY0cFLYd0fdaBrO57Dw8BeZe6br7uwh1Ihl7Lo%2FxYV33Yz51KbBwoqIV0uVuOTs4EmvSIoUjDDsuTWBjqXAVfi2Moc4st5075A%2B4qI4v4X%2FuTVONOwT6dca9a6vXiHdRHNXw0TmEy4ZlOPKsJlVaPLXk2nZ7xnQJ0evRl2eR7NeZa8nfEf86xIOoHRGW6irTxpftagi4lweYZMOagewpnvXXREko3wmfUHpTXbbfBOeCJ2vgBLbE0EMOaW8m2Rqgwo0uG1qTRuGDQPNMROwsKncYHx7U8%3D&X-Amz-SignedHeaders=host&x-id=GetObject&X-Amz-Signature=c28791c9e575759874971a89cbaddea33761a31e3f8445fa6da88b739b1da2a1)
+
+## ผลรายชุด
+
+| ชุด | หัวข้อ | ผล | หลักฐานสำคัญ |
+|---|---|---|---|
+| 01 | Manual Ops | PASS | พบ F-01 ปุ่ม CLOSE BUY, CLOSE SELL, CLOSE ALL ทำงานปกติซ้ำหลายครั้งในรอบวันนี้ |
+| 02 | Cut Loss (Auto) | PASS | ไม่พบ Finding ใหม่ `CUTLOSS-SL` ปรับ SL กลับเป็น 70 pts ทุกครั้งที่ Slippage เสียเปรียบ |
+| 03 | BE Fixed | PASS (99940) | ล็อกครั้งเดียวที่ Fill ± 24 pts ทั้ง 6 ไม้ (Sell 4, Buy 2) ไม้ 2104060382 ค้าง 23 นาที 38 วินาที ราคาไป +535 pts SL ไม่ขยับ |
+| 04 | BE Trailing | PASS | พบ F-01, F-02 |
+| 05 | Armed Trailing | PASS | พบ F-01, F-02 |
+| 06 | RR | PASS | พบ DEV-003, F-02 |
+| 07 | Auto Timeout | PASS (99941) | ช่วงหลังปิดสุดท้ายถึงเปิดคู่ใหม่ 300.02, 299.58, 300.38 และ 299.63 วินาที ขา Buy ชนะสองรอบ (BE ล็อกที่ +24 แล้ว Trailing TP ปิด) |
+| 08 | Session | PASS | พบ F-01, F-02, DEV-003, DEV-004 |
+| 09 | Session Invalid | PASS | ข้ามเวลาที่ไม่ถูกต้องได้ |
+| 10 | Report (Tester) | PASS | CSV ออกครบ |
+| 11 | Report / Recovery / Failure | PASS | ดูรายละเอียดด้านล่าง |
+| 12 | Capital Zero | PASS | ดูรายละเอียดด้านล่าง |
+| 13 | Auto-Lot | PASS | ดูรายละเอียดด้านล่าง |
+| 14 | Missing SL | PASS | ดูรายละเอียดด้านล่าง |
+| 15 | Invalid BE Step | PASS | Init ล้มเหลวพร้อม Alert "Break-even Step ต้องมากกว่า 0" ปิดระบบด้วยเหตุผล 8 ผลเหมือนกันสองรอบ |
+| 16 | Invalid Pullback | PASS | Init ล้มเหลวด้วย Alert "Trailing Pullback ต้องมากกว่า 0" ข้อความต่างจากชุด 15 แสดงว่า Validation ตรวจแยกกัน |
+
+ชุด 01–10 มาจากรายงานในโฟลเดอร์ `doc` ผมไม่ได้เห็น Log ดิบ ส่วนชุด 11–16 ตรวจจาก Log และหลักฐานที่คุณส่ง
+
+## รายละเอียดชุดที่ซับซ้อน
+
+- 11 Report: 11A `CSV COMPLETE` ยอดรวม −0.19 จาก 2 ดีล (Sell +0.51, Buy −0.70) แล้วปลด Gate / 11B Recovery พบ CSV สมบูรณ์แล้วใช้ End เดิม ไม่สร้างซ้ำ / 11C Failure ไฟล์ปลายทางผิดรูปแบบ ขึ้น `REPORT EXISTS BUT INVALID` ซ้ำทุก 60 วินาที และ HEDGE ถูกบล็อกด้วย `WAIT_REPORT`
+- 12 Capital Zero: รอบเดิม (99912) กด HEDGE ถูกบล็อก `CAPITAL_DEAD` / วันนี้ 99936 เทียบ 99937 พร้อมกัน B ที่ทุน $50 เปิดคู่เองหลัง 300.3 วินาที A ที่ทุน $0 ไม่เปิดเลยตลอดกว่า 12 นาที / 99939 (ทุน $0.01) ปิดขาขาดทุน ทุนเสมือนเป็น −$0.37 แล้วลบ SL EA ติดกลับภายใน 58 ms และ CLOSE ALL ยังปิดไม้ได้ (รอบ 99938 ใช้ไม่ได้ ปิดขากำไรจึงทุนไม่หมดขณะมี Position)
+- 13 Auto-Lot: รอบเดิม (99913) ทุน $50 ได้ 0.01 / วันนี้ Sweep 7 ระดับ (99931) ผ่าน, ทุน $100 ได้ 0.02 (99934), ทุน $250 ถูกตัดเพดานที่ 0.04 แทน 0.05 (99935) ตัวเลือก `InpMaxLotStep=0` ยังไม่ได้ทำ
+- 14 Missing SL: รอบเดิมก่อน Trigger EA ติด SL คืนใน 0.4–0.5 วินาที และหลัง Trigger ฝั่ง Buy EA ติด Cut Loss ก่อนแล้วคืน BE ภายใน 0.94 วินาที / ฝั่ง Sell หลัง Trigger อ่านจาก Note.txt ได้ว่าลบ SL ที่ 07:21:25 EA ติด Cut Loss 4120.07 (Fill + 70) กลับทันที แล้วคืน BE 4119.13 หลังผ่านไป 14.1 วินาที (ช้ากว่าฝั่ง Buy ที่ 0.94 วินาที)
+
+## Finding และ Observation
+
+| รหัส | เรื่อง | สถานะ |
+|---|---|---|
+| F-01 | Log `No changes` ซ้ำ เป็นสแปม | เปิด รอบวันนี้ 21 บรรทัดใน 3 วินาที (99941) และ 174 บรรทัดใน 5 นาที (99917) |
+| F-02 | Invalid stops (10016 / 4756) ตอนตลาดวิ่งเร็ว | เปิด เกิดที่จุดเปิดออเดอร์ 2 ครั้งวันนี้ Retry กู้ได้ภายใน 0.27 วินาที |
+| DEV-003 | SL สั้นกว่าที่ตั้งเท่ากับ Slippage ที่ได้เปรียบ | เปิด 70 → 63, 61, 58 (SHORT) และ 700 → 669, 693, 699 (LONG) ส่วนกรณีเสียเปรียบ Cut Loss บีบกลับเป็น 70 |
+| DEV-004 | ล็อก BE คลาดเคลื่อน 1–2 pts | เปิด ล็อก 24 หรือ 26 อธิบายได้ว่าล็อก = 20% × Profit ที่ปัดลงเป็นหลักของ BE Step แต่ Sell ที่ได้ 57 (ควร 56) ในรอบก่อนยังอธิบายไม่ได้ |
+| OBS-1 | Auto ไม่เขียน Log เหตุผลที่ถูกบล็อก | บันทึก ความรุนแรงต่ำ |
+| OBS-2 | Trailing TP ปิดเกิน Pullback | บันทึก SHORT เคยปิดที่ retrace 82 ขณะตั้ง 50 แต่ LONG ปิดที่ 501–513 จากที่ตั้ง 500 เข้ากับสมมติฐานว่าเกิดจากช่องว่างระหว่าง Tick |
+| OBS-3 | คืน SL สองขั้น (Cut Loss แล้วค่อย BE) | บันทึก ฝั่ง Sell ห่างกัน 14 วินาที |
+| OBS-4 | Recovery ตรวจโครงสร้างไฟล์ ไม่คำนวณยอดซ้ำจาก History | บันทึกจากโค้ด |
+| OBS-5 (ใหม่) | `CUTLOSS-SL` แก้ SL ล้มเหลว 10036 (Position doesn't exist) | บันทึก Race ที่ไม้ถูก SL ก่อนคำสั่งถึง |
+| OBS-6 (ใหม่) | เกณฑ์ทุนตรวจแค่ "มากกว่า 0" ตอนเปิด | บันทึก ทุนอาจติดลบเกินได้ (99917 จบที่ −$8.28) ต้องเทียบกับสเปก |
+
+ตามกติกา Audit ที่ตกรอบเมื่อผิดสเปกเกิน 3 จุด Finding เปิดอยู่ 4 รายการ ผลขึ้นกับว่าคุณจัดแต่ละรายการเป็นการทำงานไม่ตรงเงื่อนไขหรือเป็นประเด็นเรื่อง Log ซึ่งต้องให้คุณตัดสิน
+
+## ยังไม่ได้ทดสอบ และข้อจำกัดของหลักฐาน
+
+- ยังไม่ได้ทดสอบ: Report/Best State Recovery ระหว่าง Trailing, CSV เขียนไม่สำเร็จระหว่างสร้าง, Session Block 3 (Block 1 มีหลักฐานจากรอบ 99917 แล้ว), Protection เมื่อเน็ตล่มนานหรือเครื่องดับ (มีเฉพาะเน็ตหลุด 8 วินาที), Manual Hedge ร่วมกับ Timeout และ Spread, `InpMaxLotStep=0`, ทดสอบ Spread Gate แบบบังคับให้บล็อกจริง, รัน 24 ชั่วโมงพร้อม Report รอบ 1 วัน (LONG 17) และ Report 5 วัน (LONG 18)
+- ข้อจำกัด: ชุด 01–10 อ้างอิงรายงาน ยังไม่เห็น Log ดิบ / Collector ไม่ตรวจ Input จริงบนกราฟและไม่ตรวจไบนารี (`source_binary_verified_by_script: false`) การยืนยัน Input ต้องพึ่งภาพแท็บ Inputs / ยังไม่ได้เทียบ `git hash-object` ของไฟล์ใน `include/` และ Compile `.ex5` กับ `daebba9` / SHORT_11 ใช้ State ที่เตรียมไว้ ไม่ใช่การรัน 24 ชั่วโมงจริง
+
+ก่อน LONG 17 เหลือสามเรื่อง คือ ตัดสินแพตช์ F-01, F-02, DEV-003 และ DEV-004 เทียบ Hash แล้ว Compile ให้ตรง และลงอัปเดต Terminal build 6230 ที่ค้างอยู่
+

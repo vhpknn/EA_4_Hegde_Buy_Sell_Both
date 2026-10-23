@@ -1,0 +1,18 @@
+EA_RSI/
+├── _Core/
+│   └── v1.0/
+│       ├── Core_v1.0.mq5
+│       └── Include/
+│           ├── Core_Capital.mqh
+│           ├── Core_Engine.mqh
+│           ├── Core_Inputs.mqh
+│           ├── Core_Panel.mqh
+│           ├── Core_Protect.mqh
+│           ├── Core_Report.mqh
+│           ├── Core_Session.mqh
+│           └── Core_Utils.mqh
+└── EA_RSI/
+    └── v1.0.0/
+        ├── EA_RSI_v1.0.0.mq5
+        └── Include/
+            └── Strategy_RSI_ThongChang.mqh
